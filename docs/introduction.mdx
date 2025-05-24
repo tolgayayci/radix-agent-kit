@@ -1,0 +1,151 @@
+---
+title: "Introduction"
+description: "AI-powered agents for the Radix blockchain"
+---
+
+# Radix Agent Kit
+
+An AI-first TypeScript toolkit for building intelligent agents that interact with the Radix blockchain through natural language.
+
+## What is Radix Agent Kit?
+
+**Radix Agent Kit** lets you build AI agents that talk to the Radix blockchain in plain English. Instead of writing complex blockchain code, just tell your agent what to do.
+
+```typescript
+// Traditional way ❌
+const manifest = transactionBuilder.createTransferManifest(...)
+const intent = await transactionBuilder.buildTransactionIntent(...)
+const signedTransaction = await wallet.signTransaction(...)
+await gateway.submitTransaction(...)
+
+// With Radix Agent Kit ✅
+await agent.run("Send 100 XRD to Alice");
+```
+
+## Why Radix Agent Kit?
+
+**🤖 AI-First Approach**
+- Natural language blockchain interactions
+- LangChain-powered intelligent routing
+- Context-aware transaction building
+
+**⚡ Complete Toolkit**
+- 8 specialized AI tools for blockchain operations
+- Direct TypeScript API for custom logic
+- Built-in wallet management and security
+
+**🛡️ Production Ready**
+- Encrypted key storage
+- Type-safe transaction building
+- Comprehensive error handling
+
+**🌐 Radix Native**
+- Built with official Radix TypeScript SDK
+- Supports both Stokenet and Mainnet
+- Follows Radix best practices
+
+## ⚡ Quick Demo
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC
+});
+
+// Natural language blockchain interactions
+await agent.run("What's my XRD balance?");
+await agent.run("Send 10 XRD to Alice's account");
+await agent.run("Create a token called GameCoin with 1M supply");
+await agent.run("Stake 100 XRD with the highest APY validator");
+```
+
+<Info>
+**New to Radix?** If you generate a new wallet with `generateNewWallet()`, it starts empty! Get testnet XRD from the [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/) before trying transactions.
+</Info>
+
+## 🎯 Core Features
+
+<CardGroup cols={2}>
+  <Card title="8 AI Tools" icon="robot">
+    Account, Transfer, Token, DeFi, Staking, Component tools ready to use
+  </Card>
+  <Card title="Full Radix Support" icon="link">
+    Accounts, tokens, DeFi, staking, NFTs, smart contracts - everything covered
+  </Card>
+  <Card title="Secure by Default" icon="shield-check">
+    Encrypted key storage, transaction validation, never exposes private keys
+  </Card>
+  <Card title="Direct API Access" icon="code">
+    Skip the AI and use blockchain functions directly when needed
+  </Card>
+</CardGroup>
+
+## 🤖 How It Works
+
+1. **You speak naturally** - "Send 100 XRD to Alice"
+2. **AI understands** - Decides to use Transfer Tool
+3. **Tool executes** - Builds and submits transaction
+4. **You get results** - "✅ Sent 100 XRD to account_tdx_..."
+
+## 🧰 What Your Agent Can Do
+
+### 💰 **Account Operations**
+- Check balances
+- Get account details
+- Create new accounts
+
+### 💸 **Token Transfers**
+- Send XRD and custom tokens
+- Transfer NFTs
+- Batch transfers
+
+### 🪙 **Token Creation**
+- Deploy fungible tokens
+- Create NFT collections
+- Mint tokens and NFTs
+
+### 🏊‍♂️ **DeFi Operations**
+- Create liquidity pools
+- Add/remove liquidity
+- Swap tokens
+- Check pool prices
+
+### 🥩 **Staking**
+- Stake XRD with validators
+- Unstake positions
+- Claim rewards
+- Check staking status
+
+### 🔧 **Smart Contracts**
+- Call any component method
+- Get component state
+- Interact with dApps
+
+## 🌐 Networks
+
+| Network | Purpose | Use For |
+|---------|---------|---------|
+| **Stokenet** | Testnet | Development, testing, learning |
+| **Mainnet** | Production | Real applications with real value |
+
+<Warning>
+Always start with **Stokenet** for development. Only use Mainnet when ready for production.
+</Warning>
+
+## 🔒 Security
+
+- **Keys never exposed** - Private keys stay secure, never logged
+- **Transaction validation** - Built-in checks prevent errors
+- **Rate limiting** - Prevents spam and mistakes
+- **BIP-39 standard** - Compatible with Radix Wallet
+
+## 🚀 Getting Started
+
+Ready to build? Let's get you set up in 5 minutes.
+
+<Card title="Quick Start Guide" icon="play" href="/quickstart">
+  Install the library and create your first agent
+</Card>

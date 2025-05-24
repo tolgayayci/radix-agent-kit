@@ -1,0 +1,616 @@
+---
+title: "Examples"
+description: "Real-world code examples and patterns for Radix Agent Kit"
+---
+
+## 🚀 Complete Working Examples
+
+Copy-paste these examples to get started quickly. All examples use Stokenet (testnet).
+
+<Warning>
+**New wallets need funding!** If you're using `generateNewWallet()`, remember that new wallets start with zero XRD. Fund them first:
+- Get testnet XRD from [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/)
+- Or ask in [Radix Discord](https://discord.gg/radixdlt) for community faucets
+</Warning>
+
+## 1. 💰 Portfolio Manager Agent
+
+A complete agent that manages your Radix portfolio:
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class PortfolioAgent {
+  private agent: RadixAgent;
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY,
+      useMemory: true
+    });
+  }
+
+  async getPortfolioSummary() {
+    return await this.agent.run("Show me my complete portfolio with all balances");
+  }
+
+  async rebalancePortfolio() {
+    // Check current balances
+    const balances = await this.agent.run("What are my current token balances?");
+    console.log("Current balances:", balances);
+
+    // Rebalance if needed
+    const rebalance = await this.agent.run(
+      "If I have more than 1000 XRD, swap 10% for MyToken"
+    );
+    console.log("Rebalance result:", rebalance);
+  }
+
+  async autoStake() {
+    return await this.agent.run(
+      "Stake any XRD over 500 with the highest APY validator"
+    );
+  }
+}
+
+// Usage
+async function main() {
+  const portfolio = new PortfolioAgent();
+  
+  await portfolio.getPortfolioSummary();
+  await portfolio.rebalancePortfolio();
+  await portfolio.autoStake();
+}
+
+main().catch(console.error);
+```
+
+## 2. 🏭 Token Factory
+
+Create and manage tokens programmatically:
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class TokenFactory {
+  private agent: RadixAgent;
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+
+  async createGameToken() {
+    const result = await this.agent.run(
+      "Create a gaming token called GameCoin with symbol GAME and 1,000,000 supply"
+    );
+    console.log("GameCoin created:", result);
+    
+    // Distribute some tokens
+    await this.agent.run("Send 1000 GAME to account_tdx_2_1c8atrq...");
+    
+    return result;
+  }
+
+  async createNFTCollection() {
+    return await this.agent.run(
+      "Create an NFT collection called CryptoArt for digital artwork"
+    );
+  }
+
+  async createLoyaltyToken() {
+    return await this.agent.run(
+      "Create a loyalty token called StorePoints with 0 decimals and 10M supply"
+    );
+  }
+}
+
+// Usage
+const factory = new TokenFactory();
+await factory.createGameToken();
+await factory.createNFTCollection();
+```
+
+## 3. 🏊‍♂️ DeFi Trading Bot
+
+Automated DeFi operations:
+
+```typescript
+import { 
+  RadixAgent, 
+  RadixGatewayClient, 
+  RadixNetwork,
+  DeFi 
+} from "radix-agent-kit";
+
+class DeFiBot {
+  private agent: RadixAgent;
+  private gateway: RadixGatewayClient;
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+    
+    this.gateway = new RadixGatewayClient({
+      networkId: RadixNetwork.Stokenet
+    });
+  }
+
+  async provideLiquidity() {
+    // Create a pool
+    const pool = await this.agent.run(
+      "Create a liquidity pool with 1000 XRD and 500 MyToken"
+    );
+    console.log("Pool created:", pool);
+
+    // Add more liquidity
+    const addLiquidity = await this.agent.run(
+      "Add 500 XRD and 250 MyToken to the pool"
+    );
+    console.log("Liquidity added:", addLiquidity);
+
+    return { pool, addLiquidity };
+  }
+
+  async performArbitrage() {
+    // Check prices in different pools
+    const priceCheck = await this.agent.run(
+      "What's the XRD/MyToken price in all available pools?"
+    );
+    console.log("Price analysis:", priceCheck);
+
+    // Execute arbitrage if profitable
+    const arbitrage = await this.agent.run(
+      "If price difference is over 2%, swap XRD for MyToken in cheaper pool"
+    );
+    
+    return arbitrage;
+  }
+
+  async compoundRewards() {
+    // Claim staking rewards
+    const rewards = await this.agent.run("Claim all my staking rewards");
+    
+    // Restake rewards
+    const restake = await this.agent.run("Stake the claimed rewards");
+    
+    return { rewards, restake };
+  }
+}
+
+// Usage
+const bot = new DeFiBot();
+await bot.provideLiquidity();
+await bot.performArbitrage();
+```
+
+## 4. 🎮 Gaming Economy
+
+Blockchain gaming integration:
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class GameEconomy {
+  private agent: RadixAgent;
+  private gameTokenAddress: string = "";
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+
+  async initializeGame() {
+    // Create game token
+    const token = await this.agent.run(
+      "Create a game token called CoinQuest with symbol CQ and 1B supply"
+    );
+    
+    // Create NFT collection for items
+    const nfts = await this.agent.run(
+      "Create an NFT collection called GameItems for in-game assets"
+    );
+
+    console.log("Game economy initialized:", { token, nfts });
+  }
+
+  async rewardPlayer(playerAddress: string, amount: number) {
+    return await this.agent.run(
+      `Send ${amount} CQ tokens to ${playerAddress} as game reward`
+    );
+  }
+
+  async mintGameItem(playerAddress: string, itemType: string) {
+    return await this.agent.run(
+      `Mint a ${itemType} NFT from GameItems collection to ${playerAddress}`
+    );
+  }
+
+  async playerMarketplace() {
+    // Enable players to trade items
+    const marketplace = await this.agent.run(
+      "Create a marketplace pool for CQ tokens and GameItems NFTs"
+    );
+    
+    return marketplace;
+  }
+}
+
+// Usage in game
+const game = new GameEconomy();
+await game.initializeGame();
+await game.rewardPlayer("account_tdx_2_1c8atrq...", 100);
+await game.mintGameItem("account_tdx_2_1c8atrq...", "legendary_sword");
+```
+
+## 5. 🤖 Discord Bot Integration
+
+Connect your agent to Discord:
+
+```typescript
+import { Client, GatewayIntentBits } from "discord.js";
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class RadixDiscordBot {
+  private discordClient: Client;
+  private radixAgent: RadixAgent;
+
+  constructor() {
+    this.discordClient = new Client({
+      intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+    });
+
+    this.radixAgent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY,
+      useMemory: true
+    });
+
+    this.setupEventHandlers();
+  }
+
+  private setupEventHandlers() {
+    this.discordClient.on('ready', () => {
+      console.log(`Bot logged in as ${this.discordClient.user?.tag}!`);
+    });
+
+    this.discordClient.on('messageCreate', async (message) => {
+      if (message.author.bot) return;
+      
+      // Only respond to messages that mention the bot
+      if (message.mentions.has(this.discordClient.user!)) {
+        await this.handleRadixCommand(message);
+      }
+    });
+  }
+
+  private async handleRadixCommand(message: any) {
+    try {
+      const command = message.content.replace(`<@${this.discordClient.user!.id}>`, '').trim();
+      
+      // Security: Only allow certain users
+      const allowedUsers = process.env.DISCORD_ALLOWED_USERS?.split(',') || [];
+      if (!allowedUsers.includes(message.author.id)) {
+        await message.reply("❌ You don't have permission to use Radix commands.");
+        return;
+      }
+
+      // Process with Radix agent
+      const response = await this.radixAgent.run(command);
+      
+      // Split long responses for Discord
+      if (response.length > 2000) {
+        const chunks = response.match(/.{1,2000}/g) || [];
+        for (const chunk of chunks) {
+          await message.reply(chunk);
+        }
+      } else {
+        await message.reply(response);
+      }
+      
+    } catch (error) {
+      console.error('Error processing Radix command:', error);
+      await message.reply('❌ Error processing your request. Please try again.');
+    }
+  }
+
+  async start() {
+    await this.discordClient.login(process.env.DISCORD_BOT_TOKEN);
+  }
+}
+
+// Usage
+const bot = new RadixDiscordBot();
+bot.start();
+```
+
+## 6. 📊 Portfolio Analytics
+
+Advanced portfolio tracking:
+
+```typescript
+import { 
+  RadixAgent, 
+  RadixGatewayClient, 
+  RadixMnemonicWallet,
+  RadixNetwork 
+} from "radix-agent-kit";
+
+class PortfolioAnalytics {
+  private agent: RadixAgent;
+  private gateway: RadixGatewayClient;
+  private wallet: RadixMnemonicWallet;
+
+  constructor() {
+    this.gateway = new RadixGatewayClient({
+      networkId: RadixNetwork.Stokenet
+    });
+
+    this.wallet = RadixMnemonicWallet.fromMnemonic(
+      process.env.RADIX_MNEMONIC!,
+      { networkId: RadixNetwork.Stokenet }
+    );
+
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      wallet: this.wallet,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+
+  async getDetailedPortfolio() {
+    // Use both AI and direct API calls
+    const aiAnalysis = await this.agent.run(
+      "Analyze my complete portfolio and suggest improvements"
+    );
+
+    const rawBalances = await this.gateway.getAccountBalances(
+      this.wallet.getAddress()
+    );
+
+    return {
+      address: this.wallet.getAddress(),
+      aiAnalysis,
+      rawData: rawBalances,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  async trackPerformance() {
+    const current = await this.getDetailedPortfolio();
+    
+    // Store in database or file for tracking
+    console.log("Portfolio snapshot:", current);
+    
+    return current;
+  }
+
+  async optimizePortfolio() {
+    return await this.agent.run(`
+      Based on my current portfolio:
+      1. Suggest optimal allocation
+      2. Identify rebalancing opportunities  
+      3. Recommend staking strategies
+      4. Flag any risks
+    `);
+  }
+}
+
+// Usage
+const analytics = new PortfolioAnalytics();
+const portfolio = await analytics.getDetailedPortfolio();
+const optimization = await analytics.optimizePortfolio();
+```
+
+## 7. 🔄 Automated Trading Strategy
+
+Dollar-cost averaging and automated trading:
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class TradingStrategy {
+  private agent: RadixAgent;
+  private isRunning: boolean = false;
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+
+  async dollarCostAverage(tokenSymbol: string, monthlyAmount: number) {
+    const weeklyAmount = monthlyAmount / 4;
+    
+    console.log(`Starting DCA: ${weeklyAmount} XRD → ${tokenSymbol} weekly`);
+
+    const result = await this.agent.run(`
+      Every week, swap ${weeklyAmount} XRD for ${tokenSymbol} tokens.
+      Check my XRD balance first and only execute if I have enough.
+    `);
+
+    return result;
+  }
+
+  async rebalanceStrategy() {
+    return await this.agent.run(`
+      Rebalance my portfolio to maintain:
+      - 60% XRD 
+      - 30% MyToken
+      - 10% staked XRD
+      
+      Only rebalance if allocation is off by more than 5%.
+    `);
+  }
+
+  async stopLossStrategy(tokenSymbol: string, lossThreshold: number) {
+    return await this.agent.run(`
+      If my ${tokenSymbol} position has lost more than ${lossThreshold}% 
+      from my average buy price, sell 50% of my ${tokenSymbol} holdings.
+    `);
+  }
+
+  async startAutomatedTrading() {
+    this.isRunning = true;
+    
+    while (this.isRunning) {
+      try {
+        // Run strategies every hour
+        await this.dollarCostAverage("MyToken", 100);
+        await this.rebalanceStrategy();
+        await this.stopLossStrategy("MyToken", 20);
+        
+        // Wait 1 hour
+        await new Promise(resolve => setTimeout(resolve, 60 * 60 * 1000));
+        
+      } catch (error) {
+        console.error("Trading strategy error:", error);
+        await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000)); // Wait 5 min on error
+      }
+    }
+  }
+
+  stopTrading() {
+    this.isRunning = false;
+  }
+}
+
+// Usage
+const strategy = new TradingStrategy();
+// strategy.startAutomatedTrading(); // Uncomment to start
+```
+
+## 8. 🎯 Error Handling Best Practices
+
+Robust error handling for production:
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+class RobustRadixAgent {
+  private agent: RadixAgent;
+  private retryCount: number = 3;
+
+  constructor() {
+    this.agent = new RadixAgent({
+      networkId: RadixNetwork.Stokenet,
+      mnemonic: process.env.RADIX_MNEMONIC,
+      openaiApiKey: process.env.OPENAI_API_KEY
+    });
+  }
+
+  async safeExecute(command: string): Promise<{ success: boolean; result?: string; error?: string }> {
+    for (let attempt = 1; attempt <= this.retryCount; attempt++) {
+      try {
+        const result = await this.agent.run(command);
+        return { success: true, result };
+        
+      } catch (error: any) {
+        console.error(`Attempt ${attempt}/${this.retryCount} failed:`, error.message);
+        
+        // Don't retry certain errors
+        if (this.isNonRetryableError(error)) {
+          return { success: false, error: error.message };
+        }
+        
+        // Wait before retry
+        if (attempt < this.retryCount) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
+    }
+    
+    return { success: false, error: "Max retries exceeded" };
+  }
+
+  private isNonRetryableError(error: any): boolean {
+    const nonRetryableErrors = [
+      "Insufficient funds",
+      "Invalid address", 
+      "Invalid OpenAI API key",
+      "Unauthorized"
+    ];
+    
+    return nonRetryableErrors.some(err => 
+      error.message?.toLowerCase().includes(err.toLowerCase())
+    );
+  }
+
+  async validateBeforeExecute(command: string): Promise<boolean> {
+    // Pre-validate commands
+    if (command.toLowerCase().includes("send") || command.toLowerCase().includes("transfer")) {
+      const balance = await this.safeExecute("What's my XRD balance?");
+      if (!balance.success) return false;
+      
+      // Add more validation logic
+    }
+    
+    return true;
+  }
+}
+
+// Usage
+const robustAgent = new RobustRadixAgent();
+const result = await robustAgent.safeExecute("Send 100 XRD to account_tdx_...");
+
+if (result.success) {
+  console.log("Success:", result.result);
+} else {
+  console.error("Failed:", result.error);
+}
+```
+
+## 🛠️ Environment Setup
+
+Create a `.env` file for all examples:
+
+```bash
+# Required
+OPENAI_API_KEY=sk-your-openai-api-key
+RADIX_MNEMONIC=your twelve word mnemonic phrase here
+
+# Optional (for Discord bot)
+DISCORD_BOT_TOKEN=your-discord-bot-token
+DISCORD_ALLOWED_USERS=discord_user_id_1,discord_user_id_2
+
+# Optional (for Telegram bot)
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+TELEGRAM_ALLOWED_USERS=telegram_user_id_1,telegram_user_id_2
+```
+
+## 📚 More Examples
+
+<CardGroup cols={2}>
+  <Card title="NFT Marketplace" icon="store">
+    Build an NFT trading platform with automated pricing
+  </Card>
+  <Card title="Yield Farming Bot" icon="seedling">
+    Automated yield optimization across DeFi protocols
+  </Card>
+  <Card title="DAO Treasury" icon="users">
+    Manage community treasury with AI governance
+  </Card>
+  <Card title="Payment Processor" icon="credit-card">
+    Accept crypto payments with automatic conversion
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+**Remember**: All examples use Stokenet (testnet). For production, change to `RadixNetwork.Mainnet` and ensure proper security measures.
+</Note>

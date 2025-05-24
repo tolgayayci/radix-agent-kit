@@ -1,0 +1,28 @@
+{
+  "name": "radix-agent-kit-replit-demo",
+  "version": "1.0.0",
+  "description": "Comprehensive demo of Radix Agent Kit on Replit",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "demo:basic": "node demos/basic-agent.js",
+    "demo:direct-api": "node demos/direct-api.js",
+    "demo:defi": "node demos/defi-operations.js",
+    "demo:tokens": "node demos/token-operations.js",
+    "demo:staking": "node demos/staking-demo.js"
+  },
+  "dependencies": {
+    "radix-agent-kit": "^0.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "keywords": [
+    "radix",
+    "blockchain",
+    "ai",
+    "agent",
+    "replit"
+  ],
+  "author": "Radix Agent Kit",
+  "license": "MIT"
+} 

@@ -1,0 +1,165 @@
+---
+title: "API Overview"
+description: "Complete API reference for direct usage without AI agents"
+---
+
+## 📚 API Reference
+
+This section covers **direct API usage** - use Radix Agent Kit functions programmatically without the AI agent. Perfect for when you need precise control or want to integrate specific functionality into your applications.
+
+## 🔧 Core Architecture
+
+```typescript
+import { 
+  RadixAgent,           // AI agent wrapper
+  RadixGatewayClient,   // Blockchain connection
+  RadixTransactionBuilder, // Transaction creation
+  RadixMnemonicWallet,  // Wallet management
+  Token,                // Token operations
+  DeFi,                 // DeFi operations
+  Component,            // Smart contract interaction
+  SecureKeyStorage      // Security features
+} from "radix-agent-kit";
+```
+
+## 🎯 Quick Start
+
+```typescript
+// 1. Setup core components
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  "your twelve word mnemonic phrase",
+  { networkId: RadixNetwork.Stokenet }
+);
+
+const txBuilder = new RadixTransactionBuilder({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+// 2. Use specialized classes
+const token = new Token(txBuilder, gateway, RadixNetwork.Stokenet);
+const defi = new DeFi(txBuilder, gateway, RadixNetwork.Stokenet);
+const component = new Component(txBuilder, gateway, RadixNetwork.Stokenet);
+```
+
+## 📖 API Categories
+
+<CardGroup cols={2}>
+  <Card title="Radix Agent" icon="robot" href="/api/agent">
+    AI agent configuration, tools, and memory management
+  </Card>
+  <Card title="Gateway Client" icon="network-wired" href="/api/gateway">
+    Blockchain connection, account queries, transaction submission
+  </Card>
+  <Card title="Wallet Management" icon="wallet" href="/api/wallet">
+    Key management, signing, address generation
+  </Card>
+  <Card title="Transaction Builder" icon="hammer" href="/api/transaction-builder">
+    Transaction creation, manifest building, fee calculation
+  </Card>
+  <Card title="Token Operations" icon="coins" href="/api/token">
+    Create, mint, transfer tokens and NFTs
+  </Card>
+  <Card title="DeFi Operations" icon="chart-line" href="/api/defi">
+    Liquidity pools, swaps, staking operations
+  </Card>
+  <Card title="Component Interaction" icon="microchip" href="/api/component">
+    Smart contract method calls and state queries
+  </Card>
+  <Card title="Tools Reference" icon="wrench" href="/api/tools">
+    All 8 LangChain tools for direct usage
+  </Card>
+  <Card title="Security Features" icon="shield-check" href="/api/security">
+    Key storage, transaction validation, rate limiting
+  </Card>
+</CardGroup>
+
+## 🌐 Network Configuration
+
+All APIs support both Mainnet and Stokenet:
+
+```typescript
+// Testnet (recommended for development)
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+// Production
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Mainnet 
+});
+```
+
+## 🔄 Common Patterns
+
+### Basic Transaction Flow
+```typescript
+// 1. Create transaction
+const txIntent = await txBuilder.buildTransferTransaction(
+  options,
+  wallet.getPrivateKey(),
+  await gateway.getCurrentEpoch()
+);
+
+// 2. Sign transaction
+const signedTx = await wallet.signTransaction(txIntent);
+
+// 3. Submit to network
+const result = await gateway.submitTransaction(signedTx);
+```
+
+### Error Handling
+```typescript
+try {
+  const result = await gateway.getAccountBalances(address);
+  // Handle success
+} catch (error) {
+  if (error.message.includes("not found")) {
+    // Handle account not found
+  } else {
+    // Handle other errors
+  }
+}
+```
+
+### Async/Await vs Promises
+All APIs return Promises and support async/await:
+
+```typescript
+// Async/await (recommended)
+const balance = await gateway.getAccountBalances(address);
+
+// Promise chains
+gateway.getAccountBalances(address)
+  .then(balance => console.log(balance))
+  .catch(error => console.error(error));
+```
+
+## 🔍 API Conventions
+
+### Method Naming
+- **get\***: Query operations (read-only)
+- **build\***: Create transactions (prepare)
+- **submit\***: Execute transactions (write)
+- **create\***: Factory methods
+- **validate\***: Validation operations
+
+### Parameter Patterns
+- **Options objects**: Complex operations use options objects
+- **Required parameters**: Always listed first
+- **Optional parameters**: Listed in options objects
+- **Network ID**: Specified during initialization
+
+### Return Types
+- **Promises**: All async operations return Promises
+- **Typed responses**: Full TypeScript support
+- **Error objects**: Structured error information
+
+---
+
+<Note>
+**Performance Tip**: Reuse gateway clients and transaction builders across operations. They handle connection pooling and caching automatically.
+</Note> 

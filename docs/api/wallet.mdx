@@ -1,0 +1,502 @@
+---
+title: "Wallet API"
+description: "Complete API reference for wallet management and operations"
+---
+
+## RadixMnemonicWallet
+
+Primary wallet implementation using mnemonic phrases for key management.
+
+### Constructor
+
+```typescript
+new RadixMnemonicWallet(privateKey: PrivateKey, publicKey: PublicKey, address: string)
+```
+
+### Factory Methods
+
+#### fromMnemonic()
+Create wallet from mnemonic phrase.
+
+```typescript
+static fromMnemonic(
+  mnemonic: string, 
+  config: WalletConfig
+): RadixMnemonicWallet
+```
+
+**Parameters:**
+```typescript
+interface WalletConfig {
+  networkId: RadixNetwork;
+  derivationPath?: string;  // Optional: HD derivation path
+  accountIndex?: number;    // Optional: account index (default: 0)
+}
+```
+
+**Example:**
+```typescript
+import { RadixMnemonicWallet, RadixNetwork } from "radix-agent-kit";
+
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+  { 
+    networkId: RadixNetwork.Stokenet,
+    accountIndex: 0
+  }
+);
+```
+
+#### generateNew()
+Generate new wallet with random mnemonic.
+
+```typescript
+static generateNew(config: WalletConfig): {
+  wallet: RadixMnemonicWallet;
+  mnemonic: string;
+}
+```
+
+**Example:**
+```typescript
+const { wallet, mnemonic } = RadixMnemonicWallet.generateNew({
+  networkId: RadixNetwork.Stokenet
+});
+
+console.log("Save this mnemonic:", mnemonic);
+console.log("Wallet address:", wallet.getAddress());
+```
+
+<Warning>
+**Generated wallets start empty!** New wallets have zero XRD balance. Fund them before transactions:
+- **Stokenet**: Use [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/) or [Discord faucets](https://discord.gg/radixdlt)
+- **Mainnet**: Transfer from existing wallet or exchange
+</Warning>
+
+### Core Methods
+
+#### getAddress()
+Get the wallet's account address.
+
+```typescript
+getAddress(): string
+```
+
+**Returns:** Account address for current network
+
+**Example:**
+```typescript
+const address = wallet.getAddress();
+console.log("Address:", address); // "account_tdx_2_12x..."
+```
+
+#### getPublicKey()
+Get the wallet's public key.
+
+```typescript
+getPublicKey(): string
+```
+
+**Returns:** Hex-encoded public key
+
+**Example:**
+```typescript
+const publicKey = wallet.getPublicKey();
+console.log("Public key:", publicKey);
+```
+
+#### getPrivateKey()
+Get the wallet's private key (use carefully).
+
+```typescript
+getPrivateKey(): PrivateKey
+```
+
+**Returns:** PrivateKey object
+
+**Example:**
+```typescript
+const privateKey = wallet.getPrivateKey();
+// Use for transaction signing only
+```
+
+#### signTransaction()
+Sign a transaction intent.
+
+```typescript
+async signTransaction(
+  transactionIntent: SignableTransactionIntent
+): Promise\<SignedTransaction>
+```
+
+**Parameters:**
+- `transactionIntent`: Transaction to sign
+
+**Returns:** Signed transaction ready for submission
+
+**Example:**
+```typescript
+const signedTx = await wallet.signTransaction(transactionIntent);
+const result = await gateway.submitTransaction(signedTx);
+```
+
+---
+
+## RadixWalletFactory
+
+Factory for creating different wallet types.
+
+### Methods
+
+#### createFromMnemonic()
+Create wallet from mnemonic with advanced options.
+
+```typescript
+static createFromMnemonic(
+  mnemonic: string,
+  options: CreateWalletOptions
+): RadixMnemonicWallet
+```
+
+**Parameters:**
+```typescript
+interface CreateWalletOptions {
+  networkId: RadixNetwork;
+  derivationPath?: string;
+  accountIndex?: number;
+  passphrase?: string;      // BIP39 passphrase
+}
+```
+
+**Example:**
+```typescript
+import { RadixWalletFactory } from "radix-agent-kit";
+
+const wallet = RadixWalletFactory.createFromMnemonic(mnemonic, {
+  networkId: RadixNetwork.Stokenet,
+  accountIndex: 1,
+  passphrase: "optional_passphrase"
+});
+```
+
+#### deriveAccount()
+Derive additional accounts from existing wallet.
+
+```typescript
+static deriveAccount(
+  mnemonic: string,
+  accountIndex: number,
+  networkId: RadixNetwork
+): DerivedAccount
+```
+
+**Returns:**
+```typescript
+interface DerivedAccount {
+  wallet: RadixMnemonicWallet;
+  address: string;
+  accountIndex: number;
+}
+```
+
+**Example:**
+```typescript
+// Create multiple accounts from same mnemonic
+const account0 = RadixWalletFactory.deriveAccount(mnemonic, 0, RadixNetwork.Stokenet);
+const account1 = RadixWalletFactory.deriveAccount(mnemonic, 1, RadixNetwork.Stokenet);
+const account2 = RadixWalletFactory.deriveAccount(mnemonic, 2, RadixNetwork.Stokenet);
+
+console.log("Account 0:", account0.address);
+console.log("Account 1:", account1.address);
+console.log("Account 2:", account2.address);
+```
+
+---
+
+## VaultWallet
+
+Hardware wallet-like implementation with encrypted key storage.
+
+### Constructor
+
+```typescript
+new VaultWallet(config: VaultWalletConfig)
+```
+
+**Parameters:**
+```typescript
+interface VaultWalletConfig {
+  networkId: RadixNetwork;
+  vaultKey: string;          // Encrypted key data
+  unlockCallback?: () => Promise\<string>; // Password prompt
+}
+```
+
+### Methods
+
+#### createVaultKey()
+Create encrypted vault key from mnemonic.
+
+```typescript
+static createVaultKey(
+  mnemonic: string,
+  password: string,
+  networkId: RadixNetwork
+): Promise\<string>
+```
+
+**Example:**
+```typescript
+import { VaultWallet, createVaultKey } from "radix-agent-kit";
+
+// Create vault key
+const vaultKey = await createVaultKey(
+  mnemonic,
+  "secure_password",
+  RadixNetwork.Stokenet
+);
+
+// Use vault key
+const vaultWallet = new VaultWallet({
+  networkId: RadixNetwork.Stokenet,
+  vaultKey: vaultKey,
+  unlockCallback: async () => {
+    return await promptForPassword(); // Your password prompt
+  }
+});
+```
+
+#### unlock()
+Unlock vault for signing operations.
+
+```typescript
+async unlock(password: string): Promise\<void>
+```
+
+**Example:**
+```typescript
+await vaultWallet.unlock("secure_password");
+// Wallet is now unlocked for signing
+```
+
+#### lock()
+Lock vault to secure keys.
+
+```typescript
+lock(): void
+```
+
+**Example:**
+```typescript
+vaultWallet.lock();
+// Wallet is now locked, requires unlock for signing
+```
+
+#### isUnlocked()
+Check if vault is currently unlocked.
+
+```typescript
+isUnlocked(): boolean
+```
+
+**Example:**
+```typescript
+if (!vaultWallet.isUnlocked()) {
+  await vaultWallet.unlock(password);
+}
+```
+
+---
+
+## Wallet Security Best Practices
+
+### Mnemonic Storage
+
+```typescript
+// ❌ Never store mnemonic in plain text
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  "abandon abandon abandon...", // Don't hardcode!
+  config
+);
+
+// ✅ Use environment variables
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  process.env.RADIX_MNEMONIC!,
+  config
+);
+
+// ✅ Use encrypted storage
+const vaultKey = await createVaultKey(mnemonic, password, networkId);
+const wallet = new VaultWallet({ networkId, vaultKey });
+```
+
+### Private Key Handling
+
+```typescript
+// ❌ Never expose private keys
+console.log("Private key:", wallet.getPrivateKey()); // Don't do this!
+
+// ✅ Use private keys only for signing
+const signedTx = await wallet.signTransaction(intent);
+
+// ✅ Secure key operations
+function secureSign(wallet: RadixWallet, intent: SignableTransactionIntent) {
+  return wallet.signTransaction(intent);
+  // Private key never leaves the wallet
+}
+```
+
+### Multi-Account Management
+
+```typescript
+interface AccountManager {
+  wallets: Map\<number, RadixMnemonicWallet\>;
+  currentAccount: number;
+}
+
+class SecureAccountManager implements AccountManager {
+  wallets = new Map();
+  currentAccount = 0;
+  
+  constructor(private mnemonic: string, private networkId: RadixNetwork) {}
+  
+  createAccount(index: number): RadixMnemonicWallet {
+    if (this.wallets.has(index)) {
+      return this.wallets.get(index)!;
+    }
+    
+    const account = RadixWalletFactory.deriveAccount(
+      this.mnemonic,
+      index,
+      this.networkId
+    );
+    
+    this.wallets.set(index, account.wallet);
+    return account.wallet;
+  }
+  
+  getCurrentWallet(): RadixMnemonicWallet {
+    return this.wallets.get(this.currentAccount)!;
+  }
+  
+  switchAccount(index: number): void {
+    if (!this.wallets.has(index)) {
+      this.createAccount(index);
+    }
+    this.currentAccount = index;
+  }
+}
+```
+
+## Transaction Signing
+
+### Basic Signing
+
+```typescript
+async function signAndSubmit(
+  wallet: RadixWallet,
+  transactionIntent: SignableTransactionIntent,
+  gateway: RadixGatewayClient
+): Promise\<string> {
+  // Sign transaction
+  const signedTx = await wallet.signTransaction(transactionIntent);
+  
+  // Submit to network
+  const result = await gateway.submitTransaction(signedTx);
+  
+  return result.intent_hash || "submitted";
+}
+```
+
+### Batch Signing
+
+```typescript
+async function signMultipleTransactions(
+  wallet: RadixWallet,
+  intents: SignableTransactionIntent[]
+): Promise\<SignedTransaction[]> {
+  const signed: SignedTransaction[] = [];
+  
+  for (const intent of intents) {
+    const signedTx = await wallet.signTransaction(intent);
+    signed.push(signedTx);
+  }
+  
+  return signed;
+}
+```
+
+### Signing with Validation
+
+```typescript
+async function secureSignAndSubmit(
+  wallet: RadixWallet,
+  intent: SignableTransactionIntent,
+  gateway: RadixGatewayClient
+): Promise\<string> {
+  // Validate transaction before signing
+  const preview = await gateway.previewTransaction(
+    intent.manifest,
+    intent.header.start_epoch_inclusive,
+    intent.header.end_epoch_exclusive,
+    wallet.getPublicKey()
+  );
+  
+  // Check if transaction will succeed
+  if (preview.receipt.status !== "Succeeded") {
+    throw new Error(`Transaction will fail: ${preview.receipt.error_message}`);
+  }
+  
+  // Check fee
+  const fee = parseFloat(preview.receipt.fee_summary?.total_cost || "0");
+  if (fee > 10) { // 10 XRD limit
+    throw new Error(`Fee too high: ${fee} XRD`);
+  }
+  
+  // Sign and submit
+  const signedTx = await wallet.signTransaction(intent);
+  const result = await gateway.submitTransaction(signedTx);
+  
+  return result.intent_hash || "submitted";
+}
+```
+
+## Error Handling
+
+### Common Wallet Errors
+
+```typescript
+try {
+  const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, config);
+} catch (error) {
+  if (error.message.includes("Invalid mnemonic")) {
+    console.error("Invalid mnemonic phrase");
+  } else if (error.message.includes("Invalid network")) {
+    console.error("Unsupported network");
+  } else {
+    console.error("Wallet creation failed:", error.message);
+  }
+}
+```
+
+### Signing Errors
+
+```typescript
+try {
+  const signedTx = await wallet.signTransaction(intent);
+} catch (error) {
+  if (error.message.includes("locked")) {
+    console.error("Wallet is locked, unlock first");
+  } else if (error.message.includes("invalid transaction")) {
+    console.error("Transaction format invalid");
+  } else {
+    console.error("Signing failed:", error.message);
+  }
+}
+```
+
+---
+
+<Note>
+**Security Warning**: Never store mnemonic phrases or private keys in plain text. Always use encrypted storage or environment variables for production applications.
+</Note> 

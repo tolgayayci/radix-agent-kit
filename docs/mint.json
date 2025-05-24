@@ -1,0 +1,73 @@
+{
+  "name": "Radix Agent Kit",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0D9373",
+    "anchors": {
+      "from": "#0D9373",
+      "to": "#07C983"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/tolgayayci/radix-agent-kit"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "/quickstart"
+  },
+  "anchors": [
+    {
+      "name": "NPM Package",
+      "icon": "box",
+      "url": "https://www.npmjs.com/package/radix-agent-kit"
+    },
+    {
+      "name": "Radix DLT",
+      "icon": "link",
+      "url": "https://radixdlt.com"
+    },
+    {
+      "name": "Discord",
+      "icon": "discord",
+      "url": "https://discord.gg/radixdlt"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Reference",
+      "pages": ["features", "tools", "security"]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api/overview",
+        "api/agent",
+        "api/gateway",
+        "api/wallet",
+        "api/transaction-builder",
+        "api/token",
+        "api/defi",
+        "api/component",
+        "api/tools",
+        "api/security"
+      ]
+    },
+    {
+      "group": "Learn",
+      "pages": ["examples", "development"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/tolgayayci/radix-agent-kit",
+    "linkedin": "https://www.linkedin.com/in/tolgayayci"
+  }
+}

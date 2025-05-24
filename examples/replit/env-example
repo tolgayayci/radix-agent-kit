@@ -1,0 +1,12 @@
+# Required: OpenAI API Key for AI agent functionality
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Optional: Your Radix wallet mnemonic (12 words)
+# Leave empty to generate a new wallet automatically
+RADIX_MNEMONIC=your twelve word mnemonic phrase goes here if you have one
+
+# Network Configuration (don't change for demo)
+RADIX_NETWORK=Stokenet
+
+# Application Name (optional)
+APP_NAME=RadixAgentReplit 

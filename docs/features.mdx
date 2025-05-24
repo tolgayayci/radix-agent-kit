@@ -1,0 +1,363 @@
+---
+title: "Features"
+description: "Everything Radix Agent Kit can do - simple overview"
+---
+
+## 🤖 AI Agent Features
+
+### Natural Language Processing
+Your agent understands plain English commands and translates them into blockchain actions.
+
+```typescript
+// Instead of complex blockchain code
+await agent.run("Send 100 XRD to Alice");
+await agent.run("Create a token called GameCoin");
+await agent.run("Swap XRD for MyToken");
+```
+
+### Memory & Context
+Agents remember conversation history and can reference previous actions.
+
+```typescript
+const agent = new RadixAgent({
+  useMemory: true  // Remembers conversation
+});
+
+await agent.run("Create a token called MyToken");
+await agent.run("Now send 100 MyToken to Alice");  // Remembers MyToken
+```
+
+### 8 Specialized Tools
+Every agent comes with 8 pre-built tools for all Radix operations.
+
+## 💰 Account Management
+
+### Balance Checking
+```typescript
+await agent.run("What's my XRD balance?");
+await agent.run("Show all my token balances");
+await agent.run("Check balance of account_tdx_...");
+```
+
+### Account Information
+```typescript
+await agent.run("Show my account details");
+await agent.run("Is this address valid: account_tdx_...?");
+```
+
+### Account Creation
+```typescript
+// Generate new wallet
+const { wallet, mnemonic } = agent.generateNewWallet();
+
+// ⚠️ New wallets start with 0 XRD - fund before use!
+console.log("Address:", wallet.getAddress());
+console.log("Fund this address with testnet XRD from Dashboard or Discord");
+
+// Use existing wallet
+const agent = new RadixAgent({
+  mnemonic: "your twelve word phrase"
+});
+```
+
+<Warning>
+**New wallets are empty!** Generated wallets have zero balance. Fund them from the [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/) or [Discord faucets](https://discord.gg/radixdlt) before transactions.
+</Warning>
+
+## 💸 Token Transfers
+
+### Send XRD
+```typescript
+await agent.run("Send 100 XRD to account_tdx_...");
+await agent.run("Transfer 50 XRD to Alice");
+```
+
+### Send Custom Tokens
+```typescript
+await agent.run("Send 100 MyToken to Bob");
+await agent.run("Transfer all my GameCoins to account_tdx_...");
+```
+
+### Batch Transfers
+```typescript
+await agent.run("Send 10 XRD to Alice, 20 XRD to Bob, and 30 XRD to Charlie");
+```
+
+## 🪙 Token Creation
+
+### Fungible Tokens
+```typescript
+await agent.run("Create a token called GameCoin with 1M supply");
+await agent.run("Deploy a token with name 'MyToken', symbol 'MTK', and 500K supply");
+```
+
+**What you can configure:**
+- Token name and symbol
+- Initial supply (any amount)
+- Decimal places (default: 18)
+- Metadata and descriptions
+
+### Non-Fungible Tokens (NFTs)
+```typescript
+await agent.run("Create an NFT collection called CryptoArt");
+await agent.run("Deploy an NFT collection for gaming items");
+```
+
+### Token Minting
+```typescript
+await agent.run("Mint 1000 more GameCoin tokens");
+await agent.run("Mint an NFT with metadata to account_tdx_...");
+```
+
+## 🏊‍♂️ DeFi Operations
+
+### Liquidity Pools
+```typescript
+// Create pools
+await agent.run("Create a pool with 1000 XRD and 500 MyToken");
+
+// Add liquidity
+await agent.run("Add 500 XRD and 250 MyToken to the pool");
+
+// Remove liquidity
+await agent.run("Remove 50% of my liquidity from XRD/MyToken pool");
+```
+
+### Token Swaps
+```typescript
+// Basic swaps
+await agent.run("Swap 50 XRD for MyToken");
+await agent.run("Trade 100 MyToken for XRD");
+
+// Advanced swaps
+await agent.run("Swap XRD for MyToken with 2% slippage tolerance");
+await agent.run("Get exactly 75 MyToken for XRD");
+```
+
+### Price Checking
+```typescript
+await agent.run("What's the current XRD/MyToken price?");
+await agent.run("Show prices in all available pools");
+```
+
+## 🥩 Staking
+
+### Stake XRD
+```typescript
+await agent.run("Stake 100 XRD with validator_tdx_...");
+await agent.run("Stake 200 XRD with the highest APY validator");
+```
+
+### Unstake XRD
+```typescript
+await agent.run("Unstake 50 XRD from validator_tdx_...");
+await agent.run("Unstake all my XRD from all validators");
+```
+
+### Claim Rewards
+```typescript
+await agent.run("Claim staking rewards from all validators");
+await agent.run("Claim rewards and restake them automatically");
+```
+
+### Staking Information
+```typescript
+await agent.run("Show all my staking positions");
+await agent.run("What's my total staking rewards?");
+await agent.run("Which validators have the best APY?");
+```
+
+## 🔧 Smart Contract Interaction
+
+### Call Component Methods
+```typescript
+await agent.run("Call get_price method on component_tdx_...");
+await agent.run("Execute mint function with amount 100");
+```
+
+### Get Component State
+```typescript
+await agent.run("What's the state of component_tdx_...?");
+await agent.run("Show all data in the DEX component");
+```
+
+### Custom Contract Interactions
+```typescript
+await agent.run("Call custom_method on my contract with parameters A, B, C");
+```
+
+## 🔐 Security Features
+
+### Secure Key Management
+- **AES-256-GCM encryption** for stored keys
+- **PBKDF2 key derivation** with high iteration count
+- **Environment variable** integration
+- **Never logs** private keys or mnemonics
+
+```typescript
+// Secure storage example
+const storage = new SecureKeyStorage();
+storage.storeKey("my-key", mnemonic, "mnemonic", { created: Date.now() });
+```
+
+### Transaction Validation
+- **Address format** validation
+- **Balance checking** before transfers
+- **Rate limiting** to prevent spam
+- **Input sanitization** for all parameters
+
+### Access Control
+```typescript
+// Only authorized users can use your agent
+const allowedUsers = ["user1", "user2"];
+if (!allowedUsers.includes(userId)) {
+  return "❌ Unauthorized";
+}
+```
+
+## 🌐 Network Support
+
+### Automatic Network Detection
+```typescript
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet  // or Mainnet
+});
+// Automatically connects to correct gateway
+```
+
+### Supported Networks
+| Network | Purpose | Gateway URL |
+|---------|---------|-------------|
+| **Stokenet** | Development/Testing | `https://stokenet.radixdlt.com` |
+| **Mainnet** | Production | `https://mainnet.radixdlt.com` |
+
+### Gateway Integration
+- **Automatic endpoint** selection
+- **Connection pooling** for efficiency
+- **Error handling** and retries
+- **Transaction monitoring**
+
+## 🛠️ Direct API Access
+
+Skip the AI and use blockchain functions directly:
+
+### Gateway Client
+```typescript
+const gateway = new RadixGatewayClient({ networkId });
+await gateway.getAccountBalances(address);
+await gateway.submitTransaction(tx);
+await gateway.getCurrentEpoch();
+```
+
+### Transaction Builder
+```typescript
+const builder = new RadixTransactionBuilder({ networkId });
+const tx = await builder.buildTransferTransaction(options, privateKey, epoch);
+```
+
+### Wallet Operations
+```typescript
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, config);
+const signature = await wallet.signTransaction(intent);
+```
+
+## 📊 Analytics & Monitoring
+
+### Portfolio Tracking
+```typescript
+await agent.run("Analyze my complete portfolio");
+await agent.run("Show my portfolio performance over time");
+```
+
+### Transaction History
+```typescript
+await agent.run("Show my recent transactions");
+await agent.run("What did I do yesterday?");
+```
+
+### Performance Metrics
+```typescript
+await agent.run("Calculate my DeFi returns");
+await agent.run("Show my staking performance");
+```
+
+## 🔌 Integration Features
+
+### Memory Systems
+- **BufferMemory**: Remember recent conversations
+- **Persistent storage**: Long-term memory options
+- **Context management**: Maintain conversation flow
+
+### Custom Tools
+```typescript
+// Add your own tools
+class MyCustomTool extends RadixTool {
+  name = "my_tool";
+  description = "Does something specific";
+  
+  async call(input: string): Promise<string> {
+    // Your logic here
+    return "Result";
+  }
+}
+
+const agent = new RadixAgent({
+  customTools: [new MyCustomTool()]
+});
+```
+
+### Bot Integration
+Perfect for Discord, Telegram, or web applications:
+
+```typescript
+// Discord bot example
+discordClient.on('messageCreate', async (message) => {
+  const response = await agent.run(message.content);
+  await message.reply(response);
+});
+```
+
+## ⚡ Performance Features
+
+### Caching
+- **Gateway response** caching
+- **Address validation** caching
+- **Network status** caching
+
+### Optimization
+- **Connection pooling** for efficiency
+- **Batch operations** where possible
+- **Smart retry** logic
+
+### Error Handling
+- **Graceful degradation** on failures
+- **Automatic retries** for network issues
+- **Clear error messages** for users
+
+## 🎯 Use Case Support
+
+### Trading Bots
+- Automated trading strategies
+- Portfolio rebalancing
+- Arbitrage detection
+
+### Gaming Integration
+- In-game currency management
+- NFT item creation
+- Player reward systems
+
+### DeFi Automation
+- Yield farming optimization
+- Liquidity management
+- Reward compounding
+
+### Community Tools
+- Treasury management
+- Governance voting
+- Token distributions
+
+---
+
+<Note>
+**Everything works together**: Combine any features to build exactly what you need. The AI agent automatically selects the right tools based on your commands.
+</Note>

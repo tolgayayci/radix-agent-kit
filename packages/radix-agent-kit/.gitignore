@@ -1,0 +1,27 @@
+# Local package files
+node_modules/
+dist/
+lib/
+coverage/
+*.tsbuildinfo
+.nyc_output/
+
+# Test files
+junit.xml
+test-report.xml
+
+# Temporary files
+.temp/
+temp/
+tmp/
+
+# Package builds
+*.tgz
+*.tar.gz
+
+# IDE specific files that shouldn't be tracked
+.vscode/settings.json.local
+.idea/workspace.xml
+
+# Jest
+jest-cache/ 

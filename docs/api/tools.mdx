@@ -1,0 +1,626 @@
+---
+title: "Tools API Reference"
+description: "Complete API reference for all 8 RadixTools and direct usage"
+---
+
+## Overview
+
+The Radix Agent Kit includes 8 specialized tools that can be used directly or through the AI agent. Each tool extends the `RadixTool` base class and provides specific blockchain functionality.
+
+### Base RadixTool Class
+
+All tools inherit from `RadixTool`:
+
+```typescript
+abstract class RadixTool extends Tool {
+  protected gatewayClient: RadixGatewayClient;
+  protected transactionBuilder: RadixTransactionBuilder;
+  protected wallet: RadixWallet;
+  protected tokenService: Token;
+  protected defiService: DeFi;
+  protected componentService: Component;
+  protected networkId: number;
+  
+  async _call(input: string): Promise\<string>; // Implement in each tool
+}
+```
+
+### Tool Factory
+
+Create all tools at once:
+
+```typescript
+import { createDefaultRadixTools } from "radix-agent-kit";
+
+const tools = createDefaultRadixTools(
+  gatewayClient,
+  transactionBuilder,
+  wallet,
+  networkId
+);
+```
+
+---
+
+## 1. GetAccountInfoTool
+
+Get detailed account information including balances and metadata.
+
+### Usage
+
+```typescript
+import { GetAccountInfoTool } from "radix-agent-kit";
+
+const tool = new GetAccountInfoTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Format:**
+- Empty string: Get agent's account info
+- Account address: Get specific account info
+
+**Examples:**
+```typescript
+// Get your own account info
+const result1 = await tool._call("");
+
+// Get specific account info
+const result2 = await tool._call("account_tdx_2_12x...");
+```
+
+**Response Format:**
+```
+🏦 Your account Information:
+• Address: account_tdx_2_12x...
+• Name: My Account (if set)
+• Description: Account description (if set) 
+• Type: Account type (if set)
+• Public Key: 03abc123... (if available)
+• XRD Balance: 1,250.50 XRD
+```
+
+### Direct Properties
+
+```typescript
+tool.name = "get_account_info"
+tool.description = "Retrieves detailed information about a Radix account including address, public key, and metadata. Input: account address (optional, defaults to agent's account)"
+```
+
+---
+
+## 2. GetBalancesTool
+
+Retrieve all token balances for an account.
+
+### Usage
+
+```typescript
+import { GetBalancesTool } from "radix-agent-kit";
+
+const tool = new GetBalancesTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Format:**
+- Empty string: Get agent's balances
+- Account address: Get specific account balances
+
+**Examples:**
+```typescript
+// Get your balances
+const balances1 = await tool._call("");
+
+// Get specific account balances
+const balances2 = await tool._call("account_tdx_2_12x...");
+```
+
+**Response Format:**
+```
+📊 Your account balances:
+• 1,250.50 XRD
+• 500.00 USDT
+• 10.50 MyToken
+• 3 CryptoPunk NFT(s)
+```
+
+### Features
+
+- Automatically detects token symbols from metadata
+- Shows both fungible and non-fungible resources
+- Formats amounts for readability
+- Identifies XRD automatically
+
+---
+
+## 3. TransferTokensTool
+
+Transfer tokens or XRD to another account.
+
+### Usage
+
+```typescript
+import { TransferTokensTool } from "radix-agent-kit";
+
+const tool = new TransferTokensTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "toAddress": "account_tdx_2_12x...",
+  "amount": "100",
+  "resourceAddress": "resource_tdx_..." // Optional, defaults to XRD
+}
+```
+
+**Comma-separated Format:**
+```
+"account_tdx_2_12x...,100,resource_tdx_..."
+```
+
+**Examples:**
+```typescript
+// Transfer XRD (JSON)
+const result1 = await tool._call(JSON.stringify({
+  toAddress: "account_tdx_2_12x...",
+  amount: "100"
+}));
+
+// Transfer specific token (JSON)
+const result2 = await tool._call(JSON.stringify({
+  toAddress: "account_tdx_2_12x...",
+  amount: "50",
+  resourceAddress: "resource_tdx_..."
+}));
+
+// Transfer XRD (comma-separated)
+const result3 = await tool._call("account_tdx_2_12x...,100");
+```
+
+**Response Format:**
+```
+✅ Transfer of 100 XRD to account_tdx_2_12x... completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Validates addresses before transfer
+- Checks sufficient balance
+- Defaults to XRD if no resource specified
+- Returns transaction hash on success
+- Automatically detects token symbols for display
+
+---
+
+## 4. CreateFungibleResourceTool
+
+Create new fungible tokens (cryptocurrencies).
+
+### Usage
+
+```typescript
+import { CreateFungibleResourceTool } from "radix-agent-kit";
+
+const tool = new CreateFungibleResourceTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "name": "MyToken",
+  "symbol": "MTK",
+  "initialSupply": "1000000",
+  "divisibility": 18  // Optional, defaults to 18
+}
+```
+
+**Comma-separated Format:**
+```
+"name,symbol,initialSupply,divisibility"
+```
+
+**Examples:**
+```typescript
+// Create basic token (JSON)
+const result1 = await tool._call(JSON.stringify({
+  name: "MyToken",
+  symbol: "MTK",
+  initialSupply: "1000000"
+}));
+
+// Create token with custom divisibility (JSON)
+const result2 = await tool._call(JSON.stringify({
+  name: "UltraToken",
+  symbol: "ULTRA",
+  initialSupply: "500000",
+  divisibility: 8
+}));
+
+// Create token (comma-separated)
+const result3 = await tool._call("MyToken,MTK,1000000,18");
+```
+
+**Response Format:**
+```
+✅ Created MyToken (MTK) token with 1,000,000 MTK initial supply completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Creates token with metadata
+- Sets creator as initial owner
+- Supports custom divisibility (0-18)
+- Automatically generates description
+- Checks sufficient XRD for creation (needs ~5 XRD)
+
+---
+
+## 5. StakeXRDTool
+
+Stake XRD with validators to earn rewards.
+
+### Usage
+
+```typescript
+import { StakeXRDTool } from "radix-agent-kit";
+
+const tool = new StakeXRDTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "validatorAddress": "validator_tdx_...",
+  "amount": "1000"
+}
+```
+
+**Comma-separated Format:**
+```
+"validator_tdx_...,1000"
+```
+
+**Examples:**
+```typescript
+// Stake XRD (JSON)
+const result1 = await tool._call(JSON.stringify({
+  validatorAddress: "validator_tdx_2_1s...",
+  amount: "1000"
+}));
+
+// Stake XRD (comma-separated)
+const result2 = await tool._call("validator_tdx_2_1s...,500");
+```
+
+**Response Format:**
+```
+✅ Staked 1,000.00 XRD with validator validator_tdx_2_1s... completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Validates validator addresses
+- Checks sufficient XRD balance before staking
+- Returns formatted transaction result
+- Works with any active validator
+
+---
+
+## 6. AddLiquidityTool
+
+Add liquidity to two-resource pools for DeFi operations.
+
+### Usage
+
+```typescript
+import { AddLiquidityTool } from "radix-agent-kit";
+
+const tool = new AddLiquidityTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "poolAddress": "component_tdx_...",
+  "amount1": "100",
+  "amount2": "50"
+}
+```
+
+**Comma-separated Format:**
+```
+"component_tdx_...,100,50"
+```
+
+**Examples:**
+```typescript
+// Add liquidity (JSON)
+const result1 = await tool._call(JSON.stringify({
+  poolAddress: "component_tdx_2_1c...",
+  amount1: "100",
+  amount2: "50"
+}));
+
+// Add liquidity (comma-separated)
+const result2 = await tool._call("component_tdx_2_1c...,100,50");
+```
+
+**Response Format:**
+```
+✅ Added liquidity (100, 50) to pool component_tdx_2_1c... completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Validates pool existence
+- Checks sufficient token balances
+- Automatically detects pool's resource types
+- Returns LP tokens
+
+---
+
+## 7. SwapTokensTool
+
+Swap between different tokens using liquidity pools.
+
+### Usage
+
+```typescript
+import { SwapTokensTool } from "radix-agent-kit";
+
+const tool = new SwapTokensTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "poolAddress": "component_tdx_...",
+  "fromResourceAddress": "resource_tdx_...",
+  "toResourceAddress": "resource_tdx_...",
+  "amountIn": "100",
+  "minAmountOut": "95"  // Optional, defaults to 0 (no slippage protection)
+}
+```
+
+**Comma-separated Format:**
+```
+"component_tdx_...,resource_tdx_...,resource_tdx_...,100,95"
+```
+
+**Examples:**
+```typescript
+// Swap tokens (JSON)
+const result1 = await tool._call(JSON.stringify({
+  poolAddress: "component_tdx_2_1c...",
+  fromResourceAddress: "resource_tdx_2_1t...",
+  toResourceAddress: "resource_tdx_2_1n...",
+  amountIn: "100",
+  minAmountOut: "95"
+}));
+
+// Swap tokens (comma-separated)
+const result2 = await tool._call("component_tdx_2_1c...,resource_tdx_2_1t...,resource_tdx_2_1n...,100");
+```
+
+**Response Format:**
+```
+✅ Swapped 100.00 XRD for tokens in pool component_tdx_2_1c... completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Validates pool and token addresses
+- Supports slippage protection with minAmountOut
+- Automatically detects XRD for display
+- Works with any two-resource pool
+
+---
+
+## 8. CallComponentMethodTool
+
+Call methods on smart contracts (components).
+
+### Usage
+
+```typescript
+import { CallComponentMethodTool } from "radix-agent-kit";
+
+const tool = new CallComponentMethodTool(gateway, txBuilder, wallet, networkId);
+```
+
+### Methods
+
+#### _call()
+```typescript
+async _call(input: string): Promise\<string>
+```
+
+**Input Formats:**
+
+**JSON Format:**
+```json
+{
+  "componentAddress": "component_tdx_...",
+  "methodName": "method_name",
+  "args": ["arg1", "arg2"]  // Optional
+}
+```
+
+**Comma-separated Format:**
+```
+"component_tdx_...,method_name,arg1,arg2,..."
+```
+
+**Examples:**
+```typescript
+// Simple method call (JSON)
+const result1 = await tool._call(JSON.stringify({
+  componentAddress: "component_tdx_2_1c...",
+  methodName: "get_info"
+}));
+
+// Method call with arguments (JSON)
+const result2 = await tool._call(JSON.stringify({
+  componentAddress: "component_tdx_2_1c...",
+  methodName: "update_price",
+  args: ["1.50", "USDT"]
+}));
+
+// Method call (comma-separated)
+const result3 = await tool._call("component_tdx_2_1c...,buy_tokens,100,USDT");
+```
+
+**Response Format:**
+```
+✅ Called method 'buy_tokens' on component component_tdx_2_1c... with args: [100, USDT] completed successfully. Transaction: abcd1234...
+```
+
+### Features
+
+- Supports any component method
+- Handles method arguments of any type
+- Works with complex smart contracts
+- Validates component addresses
+
+---
+
+## Direct Tool Usage Examples
+
+### Using Tools Without Agent
+
+```typescript
+import { 
+  RadixGatewayClient,
+  RadixTransactionBuilder,
+  RadixMnemonicWallet,
+  RadixNetwork,
+  GetBalancesTool,
+  TransferTokensTool
+} from "radix-agent-kit";
+
+// Setup
+const gateway = new RadixGatewayClient({ networkId: RadixNetwork.Stokenet });
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, { networkId: RadixNetwork.Stokenet });
+const txBuilder = new RadixTransactionBuilder({ networkId: RadixNetwork.Stokenet });
+
+// Create tools
+const balanceTool = new GetBalancesTool(gateway, txBuilder, wallet, RadixNetwork.Stokenet);
+const transferTool = new TransferTokensTool(gateway, txBuilder, wallet, RadixNetwork.Stokenet);
+
+// Use tools directly
+const balances = await balanceTool._call("");
+console.log(balances);
+
+const transferResult = await transferTool._call(JSON.stringify({
+  toAddress: "account_tdx_2_12x...",
+  amount: "100"
+}));
+console.log(transferResult);
+```
+
+### Error Handling
+
+```typescript
+try {
+  const result = await tool._call(invalidInput);
+} catch (error) {
+  console.error("Tool error:", error.message);
+  
+  // Common errors:
+  // - "Invalid address format"
+  // - "Insufficient funds"  
+  // - "Invalid input format"
+  // - "Network connection failed"
+  // - "Missing required parameters"
+}
+```
+
+### Tool Names Reference
+
+```typescript
+import { RADIX_TOOL_NAMES } from "radix-agent-kit";
+
+console.log(RADIX_TOOL_NAMES.GET_ACCOUNT_INFO);      // "get_account_info"
+console.log(RADIX_TOOL_NAMES.GET_BALANCES);          // "get_balances"
+console.log(RADIX_TOOL_NAMES.TRANSFER_TOKENS);       // "transfer_tokens"
+console.log(RADIX_TOOL_NAMES.CREATE_FUNGIBLE_RESOURCE); // "create_fungible_resource"
+console.log(RADIX_TOOL_NAMES.STAKE_XRD);             // "stake_xrd"
+console.log(RADIX_TOOL_NAMES.ADD_LIQUIDITY);         // "add_liquidity"
+console.log(RADIX_TOOL_NAMES.SWAP_TOKENS);           // "swap_tokens"
+console.log(RADIX_TOOL_NAMES.CALL_COMPONENT_METHOD); // "call_component_method"
+```
+
+### Input Format Guidelines
+
+**JSON Format (Recommended for Complex Operations):**
+- Always use proper JSON with double quotes
+- All parameters as strings (even numbers)
+- Optional parameters can be omitted
+
+**Comma-separated Format (Simple Operations):**
+- Values separated by commas
+- No spaces around commas
+- Order matters - follow the documented sequence
+
+---
+
+<Note>
+**Input Validation**: All tools validate inputs before execution. Each tool expects specific required parameters and will return error messages for missing or invalid inputs.
+</Note> 

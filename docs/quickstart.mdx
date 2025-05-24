@@ -1,0 +1,248 @@
+---
+title: "Quick Start"
+description: "Get your AI agent running in 5 minutes"
+---
+
+## 1. Install
+
+<CodeGroup>
+```bash npm
+npm install radix-agent-kit
+```
+
+```bash yarn
+yarn add radix-agent-kit
+```
+
+```bash pnpm
+pnpm add radix-agent-kit
+```
+</CodeGroup>
+
+## 2. Setup Environment
+
+Create a `.env` file:
+
+```bash
+OPENAI_API_KEY=your-openai-api-key
+RADIX_MNEMONIC=your-twelve-word-mnemonic-phrase
+```
+
+<Warning>
+Use **Stokenet (testnet)** for development. Never start with mainnet!
+</Warning>
+
+## 3. Create Your First Agent
+
+<CodeGroup>
+
+```typescript Basic Agent (New Wallet)
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY
+});
+
+// Generate a new wallet
+const { wallet, mnemonic } = agent.generateNewWallet();
+console.log("🔑 Your new address:", wallet.getAddress());
+console.log("📝 Save this mnemonic:", mnemonic);
+
+// ⚠️ New wallets start with 0 XRD! Fund it before using:
+// 1. Copy the address above
+// 2. Get testnet XRD from Radix Dashboard or Discord
+// 3. Then start using your agent
+
+// Chat with your agent
+async function main() {
+  const response = await agent.run("What's my XRD balance?");
+  console.log("🤖 Agent:", response);
+}
+
+main().catch(console.error);
+```
+
+```typescript Existing Wallet
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  mnemonic: process.env.RADIX_MNEMONIC,
+  openaiApiKey: process.env.OPENAI_API_KEY
+});
+
+async function main() {
+  console.log("🔑 Address:", agent.getWallet()?.getAddress());
+  
+  const response = await agent.run("What's my balance?");
+  console.log("🤖 Agent:", response);
+}
+
+main().catch(console.error);
+```
+
+</CodeGroup>
+
+## 4. Try These Commands
+
+Your agent understands natural language! Try these:
+
+### 💰 Check Balance
+```typescript
+await agent.run("What's my XRD balance?");
+await agent.run("Show all my tokens");
+```
+
+### 💸 Send Tokens
+```typescript
+await agent.run("Send 10 XRD to account_tdx_2_1c8atrq...");
+await agent.run("Transfer 100 MyToken to Alice");
+```
+
+### 🪙 Create Tokens
+```typescript
+await agent.run("Create a token called GameCoin with 1M supply");
+await agent.run("Deploy an NFT collection called ArtPieces");
+```
+
+### 🏊‍♂️ DeFi Operations
+```typescript
+await agent.run("Create a pool with 1000 XRD and 500 MyToken");
+await agent.run("Swap 50 XRD for MyToken");
+await agent.run("Add liquidity to the XRD/MyToken pool");
+```
+
+### 🥩 Staking
+```typescript
+await agent.run("Stake 100 XRD with validator_tdx_...");
+await agent.run("Check my staking rewards");
+await agent.run("Unstake 50 XRD");
+```
+
+## 5. Configuration Options
+
+```typescript
+interface RadixAgentConfig {
+  networkId: RadixNetwork;        // Stokenet or Mainnet
+  openaiApiKey?: string;          // OpenAI API key
+  mnemonic?: string;              // Existing wallet mnemonic
+  wallet?: RadixWallet;           // Existing wallet instance
+  model?: string;                 // LLM model (default: "gpt-4")
+  temperature?: number;           // LLM creativity (default: 0.1)
+  useMemory?: boolean;            // Remember conversation (default: false)
+  applicationName?: string;       // App name for Gateway
+  customTools?: RadixTool[];      // Additional tools
+}
+```
+
+### Example with All Options
+```typescript
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC,
+  model: "gpt-4",
+  temperature: 0.1,
+  useMemory: true,
+  applicationName: "MyRadixApp"
+});
+```
+
+## 6. Direct API Usage (No AI)
+
+Skip the AI and use blockchain functions directly:
+
+```typescript
+import { 
+  RadixGatewayClient, 
+  RadixMnemonicWallet,
+  RadixTransactionBuilder,
+  Token,
+  DeFi
+} from "radix-agent-kit";
+
+// Setup
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  process.env.RADIX_MNEMONIC!, 
+  { networkId: RadixNetwork.Stokenet }
+);
+
+// Check balance
+const balances = await gateway.getAccountBalances(wallet.getAddress());
+
+// Create token
+const token = new Token(
+  new RadixTransactionBuilder({ networkId: RadixNetwork.Stokenet }),
+  gateway,
+  RadixNetwork.Stokenet
+);
+
+await token.createFungibleResource({
+  name: "MyToken",
+  symbol: "MTK", 
+  initialSupply: "1000000"
+}, wallet, await gateway.getCurrentEpoch());
+```
+
+## 7. Error Handling
+
+Always handle errors in production:
+
+```typescript
+async function safeAgentCall() {
+  try {
+    const response = await agent.run("Send 1000000 XRD to invalid_address");
+    console.log("Success:", response);
+  } catch (error) {
+    console.error("Error:", error.message);
+    
+    // Common errors:
+    // - Insufficient funds
+    // - Invalid address format
+    // - Network connection issues
+    // - Invalid OpenAI API key
+  }
+}
+```
+
+## 8. Get Testnet XRD
+
+You need XRD for transaction fees on Stokenet:
+
+1. **Get your address**: `console.log(agent.getWallet()?.getAddress())`
+2. **Visit Radix Dashboard**: [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/)
+3. **Or ask in Discord**: [Radix Discord](https://discord.gg/radixdlt) for community faucets
+4. **Request test XRD** for your address
+5. **Verify**: `await agent.run("What's my balance?")`
+
+<Warning>
+**New wallets start empty!** Generated wallets have zero XRD balance. You must fund them manually from the Dashboard or Discord faucets before performing transactions.
+</Warning>
+
+## 9. Next Steps
+
+<CardGroup cols={2}>
+  <Card title="All AI Tools" icon="robot" href="/tools">
+    Learn about all 8 LangChain tools available
+  </Card>
+  <Card title="Security Guide" icon="shield-check" href="/security">
+    Best practices for production usage
+  </Card>
+  <Card title="Examples" icon="code" href="/examples">
+    Real-world code examples and patterns
+  </Card>
+  <Card title="Features Guide" icon="star" href="/features">
+    Deep dive into all functionality
+  </Card>
+</CardGroup>
+
+---
+
+<Note>
+**Ready for production?** Switch to `RadixNetwork.Mainnet`, but make sure you understand the security implications first!
+</Note>

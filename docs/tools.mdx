@@ -1,0 +1,308 @@
+---
+title: "AI Tools"
+description: "8 LangChain tools that make your agent blockchain-capable"
+---
+
+Your AI agent comes with **8 specialized tools** that handle all Radix blockchain operations. Each tool translates natural language into blockchain actions.
+
+## 🤖 How Tools Work
+
+```typescript
+// User says this:
+await agent.run("Send 100 XRD to Alice");
+
+// Agent automatically:
+// 1. Understands intent
+// 2. Selects TransferTokensTool
+// 3. Executes blockchain transaction
+// 4. Returns friendly response
+```
+
+<Info>
+**Pro Tip**: You can also call tools directly without the AI agent for programmatic usage.
+</Info>
+
+## 🧰 All 8 Tools
+
+### 1. 💰 GetAccountInfoTool
+
+**What it does**: Gets account details and metadata
+
+```typescript
+// Natural language
+await agent.run("Show my account details");
+await agent.run("Is this address valid: account_tdx_...");
+
+// Direct usage
+const tool = new GetAccountInfoTool(gateway, builder, wallet, networkId);
+const result = await tool.call("account_tdx_...");
+```
+
+**Returns**: Account address, public key, metadata, validation status
+
+---
+
+### 2. 📊 GetBalancesTool  
+
+**What it does**: Checks token balances for any account
+
+```typescript
+// Natural language
+await agent.run("What's my XRD balance?");
+await agent.run("Show all my token balances");
+await agent.run("How much MyToken do I have?");
+
+// Direct usage
+const tool = new GetBalancesTool(gateway, builder, wallet, networkId);
+const result = await tool.call("account_tdx_...");
+```
+
+**Returns**: XRD balance, all token balances, NFT counts, LSU balances
+
+---
+
+### 3. 💸 TransferTokensTool
+
+**What it does**: Transfers tokens between accounts
+
+```typescript
+// Natural language
+await agent.run("Send 100 XRD to account_tdx_...");
+await agent.run("Transfer 50 MyToken to Alice");
+await agent.run("Send all my GameTokens to Bob");
+
+// Direct usage
+const tool = new TransferTokensTool(gateway, builder, wallet, networkId);
+const result = await tool.call("account_tdx_...,100,xrd");
+```
+
+**Parameters**: Destination address, amount, token type (defaults to XRD)
+
+---
+
+### 4. 🪙 CreateFungibleResourceTool
+
+**What it does**: Creates new fungible tokens
+
+```typescript
+// Natural language
+await agent.run("Create a token called GameCoin with 1M supply");
+await agent.run("Deploy a fungible token named MyToken with 18 decimals");
+
+// Direct usage
+const tool = new CreateFungibleResourceTool(gateway, builder, wallet, networkId);
+const result = await tool.call("TokenName,SYMBOL,1000000,18");
+```
+
+**Parameters**: Name, symbol, initial supply, decimals
+
+**Returns**: Token address, creation confirmation, token details
+
+---
+
+### 5. 🥩 StakeXRDTool
+
+**What it does**: Handles XRD staking operations
+
+```typescript
+// Natural language
+await agent.run("Stake 100 XRD with validator_tdx_...");
+await agent.run("Unstake 50 XRD from my staking position");
+await agent.run("Check my staking rewards");
+
+// Direct usage
+const tool = new StakeXRDTool(gateway, builder, wallet, networkId);
+const result = await tool.call("stake,validator_tdx_...,100");
+```
+
+**Operations**: 
+- **Stake**: Lock XRD with validators
+- **Unstake**: Withdraw staked XRD  
+- **Claim**: Collect staking rewards
+- **Check**: View staking positions
+
+---
+
+### 6. 🏊‍♂️ AddLiquidityTool
+
+**What it does**: Manages liquidity pool operations
+
+```typescript
+// Natural language
+await agent.run("Add 1000 XRD and 500 MyToken to liquidity pool");
+await agent.run("Create a pool with equal XRD and MyToken");
+await agent.run("Remove liquidity from XRD/MyToken pool");
+
+// Direct usage
+const tool = new AddLiquidityTool(gateway, builder, wallet, networkId);
+const result = await tool.call("component_tdx_...,1000,500");
+```
+
+**Operations**:
+- **Add Liquidity**: Provide tokens to pools
+- **Remove Liquidity**: Withdraw tokens from pools
+- **Create Pools**: Initialize new trading pairs
+
+---
+
+### 7. 🔄 SwapTokensTool
+
+**What it does**: Executes token swaps in liquidity pools
+
+```typescript
+// Natural language  
+await agent.run("Swap 50 XRD for MyToken");
+await agent.run("Trade 100 MyToken for XRD with 5% slippage");
+
+// Direct usage
+const tool = new SwapTokensTool(gateway, builder, wallet, networkId);
+const result = await tool.call("component_tdx_...,resource_from,resource_to,100");
+```
+
+**Features**:
+- **Token Swaps**: Exchange tokens at market rates
+- **Slippage Protection**: Set maximum price impact
+- **Price Preview**: Check rates before swapping
+
+---
+
+### 8. 🔧 CallComponentMethodTool
+
+**What it does**: Calls methods on Radix components (smart contracts)
+
+```typescript
+// Natural language
+await agent.run("Call get_price method on component_tdx_...");
+await agent.run("Interact with the DEX component");
+
+// Direct usage
+const tool = new CallComponentMethodTool(gateway, builder, wallet, networkId);
+const result = await tool.call("component_tdx_...,method_name,arg1,arg2");
+```
+
+**Capabilities**: Call any public method on any Radix component
+
+## 🛠️ Direct Tool Usage
+
+You can use tools directly without the AI agent:
+
+```typescript
+import { GetBalancesTool, TransferTokensTool } from "radix-agent-kit";
+
+// Setup tool
+const balanceTool = new GetBalancesTool(gateway, builder, wallet, networkId);
+
+// Use directly
+const balances = await balanceTool.call("account_tdx_...");
+console.log("Balances:", balances);
+
+// Chain operations
+const transferTool = new TransferTokensTool(gateway, builder, wallet, networkId);
+await transferTool.call("account_tdx_...,100,xrd");
+```
+
+## 🎯 Tool Input Formats
+
+Each tool expects specific input formats:
+
+| Tool | Input Format | Example |
+|------|-------------|---------|
+| **GetAccountInfo** | `address` | `account_tdx_...` |
+| **GetBalances** | `address` | `account_tdx_...` |
+| **TransferTokens** | `address,amount,token` | `account_tdx_...,100,xrd` |
+| **CreateFungible** | `name,symbol,supply,decimals` | `GameCoin,GAME,1000000,18` |
+| **StakeXRD** | `action,validator,amount` | `stake,validator_tdx_...,100` |
+| **AddLiquidity** | `pool,amount1,amount2` | `component_tdx_...,1000,500` |
+| **SwapTokens** | `pool,from,to,amount` | `component_tdx_...,resource1,resource2,100` |
+| **CallComponent** | `component,method,args...` | `component_tdx_...,get_price,arg1` |
+
+## 🔍 Error Handling
+
+Tools handle common errors gracefully:
+
+```typescript
+// Insufficient funds
+"❌ Error: Insufficient XRD balance. You have 50 XRD but tried to send 100 XRD."
+
+// Invalid address
+"❌ Error: Invalid account address format."
+
+// Network issues
+"❌ Error: Unable to connect to Radix network. Please try again."
+
+// Component not found
+"❌ Error: Component not found or method doesn't exist."
+```
+
+## 🚀 Adding Custom Tools
+
+Create your own tools for specific use cases:
+
+```typescript
+import { RadixTool } from "radix-agent-kit";
+
+class MyCustomTool extends RadixTool {
+  name = "my_custom_tool";
+  description = "Does something specific for my app";
+
+  async call(input: string): Promise<string> {
+    // Your custom logic here
+    const [param1, param2] = input.split(",");
+    
+    // Use Radix integration
+    const result = await this.gateway.someCustomOperation(param1, param2);
+    
+    return `Custom operation completed: ${result}`;
+  }
+}
+
+// Add to agent
+const agent = new RadixAgent({
+  // ... config
+  customTools: [new MyCustomTool(gateway, builder, wallet, networkId)]
+});
+```
+
+## 📚 Examples
+
+### Portfolio Management Bot
+```typescript
+// Check all balances
+await agent.run("What's my complete portfolio?");
+
+// Rebalance portfolio  
+await agent.run("Swap 10% of my XRD for MyToken");
+
+// Stake idle XRD
+await agent.run("Stake any XRD over 1000 with the best validator");
+```
+
+### DeFi Automation
+```typescript
+// Provide liquidity
+await agent.run("Add equal value XRD and MyToken to liquidity pool");
+
+// Compound rewards
+await agent.run("Claim staking rewards and restake them");
+
+// Arbitrage opportunities
+await agent.run("Check XRD price in all pools");
+```
+
+### NFT Operations
+```typescript
+// Create NFT collection
+await agent.run("Create an NFT collection called CryptoArt");
+
+// Mint NFTs
+await agent.run("Mint 10 NFTs with metadata");
+
+// Transfer NFTs
+await agent.run("Send NFT #1 to collector address");
+```
+
+---
+
+<Note>
+**Need more functionality?** Tools are designed to be extensible. You can create custom tools for your specific use case and add them to any agent.
+</Note>

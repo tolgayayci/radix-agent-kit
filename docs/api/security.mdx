@@ -1,0 +1,120 @@
+---
+title: "Security API"
+description: "Complete API reference for security features"
+---
+
+## SecureKeyStorage
+
+Encrypted key storage for secure mnemonic and private key management.
+
+### Constructor
+
+```typescript
+new SecureKeyStorage(options: KeyStorageOptions)
+```
+
+**Parameters:**
+```typescript
+interface KeyStorageOptions {
+  encryptionKey: string;
+  storagePath?: string;
+  keyDerivation?: 'pbkdf2' | 'scrypt';
+}
+```
+
+### Methods
+
+#### store()
+Store encrypted key data.
+
+```typescript
+async store(
+  keyId: string,
+  keyData: string,
+  password: string
+): Promise\<void>
+```
+
+**Example:**
+```typescript
+const storage = new SecureKeyStorage({
+  encryptionKey: process.env.ENCRYPTION_KEY!
+});
+
+await storage.store(
+  "wallet_1",
+  mnemonic,
+  "secure_password"
+);
+```
+
+#### retrieve()
+Retrieve and decrypt key data.
+
+```typescript
+async retrieve(
+  keyId: string,
+  password: string
+): Promise\<string>
+```
+
+**Example:**
+```typescript
+const mnemonic = await storage.retrieve(
+  "wallet_1",
+  "secure_password"
+);
+```
+
+## TransactionSecurity
+
+Transaction validation and security features.
+
+### Constructor
+
+```typescript
+new TransactionSecurity(options: TransactionValidationOptions)
+```
+
+**Parameters:**
+```typescript
+interface TransactionValidationOptions {
+  maxTransactionValue?: string;
+  rateLimitOptions?: RateLimitOptions;
+  allowedAddresses?: string[];
+  blacklistedAddresses?: string[];
+}
+```
+
+### Methods
+
+#### validateTransaction()
+Validate transaction before signing.
+
+```typescript
+async validateTransaction(
+  transaction: SignableTransactionIntent
+): Promise\<ValidationResult>
+```
+
+**Example:**
+```typescript
+const security = new TransactionSecurity({
+  maxTransactionValue: "10000",
+  rateLimitOptions: {
+    maxTransactionsPerHour: 100,
+    maxValuePerHour: "50000"
+  }
+});
+
+const result = await security.validateTransaction(intent);
+if (!result.isValid) {
+  throw new Error(result.errors.join(', '));
+}
+```
+
+---
+
+<Note>
+**Security First**: Always use encrypted storage for keys and validate transactions before signing in production applications.
+</Note> 

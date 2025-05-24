@@ -1,0 +1,290 @@
+---
+title: "RadixAgent API"
+description: "Complete API reference for the RadixAgent class"
+---
+
+## RadixAgent
+
+The main AI agent class that provides natural language interface to Radix blockchain operations.
+
+### Constructor
+
+```typescript
+new RadixAgent(config: RadixAgentConfig)
+```
+
+#### RadixAgentConfig
+
+```typescript
+interface RadixAgentConfig {
+  networkId: RadixNetwork;          // Network to connect to
+  openaiApiKey?: string;            // OpenAI API key for AI features
+  mnemonic?: string;                // Wallet mnemonic phrase
+  wallet?: RadixWallet;             // Existing wallet instance
+  model?: string;                   // LLM model (default: "gpt-4")
+  temperature?: number;             // LLM temperature (default: 0.1)
+  useMemory?: boolean;              // Enable conversation memory
+  applicationName?: string;         // App name for Gateway
+  customTools?: RadixTool[];        // Additional custom tools
+}
+```
+
+### Methods
+
+#### run()
+Execute natural language commands with the AI agent.
+
+```typescript
+async run(input: string): Promise\<string>
+```
+
+**Parameters:**
+- `input`: Natural language command
+
+**Returns:** Promise\<string\> - Agent response
+
+**Example:**
+```typescript
+const response = await agent.run("What's my XRD balance?");
+console.log(response); // "📊 Your account balances: • 1,250.50 XRD"
+```
+
+#### generateNewWallet()
+Generate a new wallet with random mnemonic.
+
+```typescript
+generateNewWallet(): { wallet: RadixWallet; mnemonic: string }
+```
+
+**Returns:** Object with wallet instance and mnemonic phrase
+
+**Example:**
+```typescript
+const { wallet, mnemonic } = agent.generateNewWallet();
+console.log("Address:", wallet.getAddress());
+console.log("Mnemonic:", mnemonic); // Save this securely!
+```
+
+<Warning>
+**New wallets start with zero balance!** Fund generated wallets before use:
+- **Stokenet**: Get testnet XRD from [Dashboard](https://stokenet-dashboard.radixdlt.com/) or [Discord](https://discord.gg/radixdlt)
+- **Mainnet**: Transfer from existing wallet or exchange
+</Warning>
+
+#### setWallet()
+Set a different wallet for the agent.
+
+```typescript
+setWallet(wallet: RadixWallet): void
+```
+
+**Parameters:**
+- `wallet`: RadixWallet instance
+
+**Example:**
+```typescript
+const newWallet = RadixMnemonicWallet.fromMnemonic(mnemonic, config);
+agent.setWallet(newWallet);
+```
+
+#### getWallet()
+Get the current wallet instance.
+
+```typescript
+getWallet(): RadixWallet | null
+```
+
+**Returns:** Current wallet or null if none set
+
+**Example:**
+```typescript
+const wallet = agent.getWallet();
+if (wallet) {
+  console.log("Current address:", wallet.getAddress());
+}
+```
+
+#### getInfo()
+Get agent configuration and status information.
+
+```typescript
+getInfo(): AgentInfo
+```
+
+**Returns:** AgentInfo object
+
+```typescript
+interface AgentInfo {
+  networkId: RadixNetwork;
+  walletAddress?: string;
+  toolCount: number;
+  hasMemory: boolean;
+  model: string;
+}
+```
+
+**Example:**
+```typescript
+const info = agent.getInfo();
+console.log(`Agent connected to ${info.networkId} with ${info.toolCount} tools`);
+```
+
+#### getTools()
+Get list of available tools.
+
+```typescript
+getTools(): RadixTool[]
+```
+
+**Returns:** Array of RadixTool instances
+
+**Example:**
+```typescript
+const tools = agent.getTools();
+tools.forEach(tool => console.log(tool.name));
+```
+
+#### addTool()
+Add a custom tool to the agent.
+
+```typescript
+addTool(tool: RadixTool): void
+```
+
+**Parameters:**
+- `tool`: Custom RadixTool implementation
+
+**Example:**
+```typescript
+class MyCustomTool extends RadixTool {
+  name = "my_tool";
+  description = "Does something custom";
+  
+  async _call(input: string): Promise\<string> {
+    return "Custom operation result";
+  }
+}
+
+agent.addTool(new MyCustomTool(gateway, builder, wallet, networkId));
+```
+
+#### removeTool()
+Remove a tool from the agent.
+
+```typescript
+removeTool(toolName: string): boolean
+```
+
+**Parameters:**
+- `toolName`: Name of tool to remove
+
+**Returns:** true if tool was removed, false if not found
+
+**Example:**
+```typescript
+const removed = agent.removeTool("my_tool");
+console.log("Tool removed:", removed);
+```
+
+## RadixNetwork
+
+Network identifiers for connecting to different Radix networks.
+
+```typescript
+enum RadixNetwork {
+  Mainnet = 1,
+  Stokenet = 2
+}
+```
+
+## Example Usage
+
+### Basic Setup
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+// Create agent with new wallet
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  useMemory: true
+});
+
+// Generate wallet
+const { wallet, mnemonic } = agent.generateNewWallet();
+console.log("Save this mnemonic:", mnemonic);
+```
+
+### Using Existing Wallet
+
+```typescript
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  mnemonic: process.env.RADIX_MNEMONIC,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  model: "gpt-4",
+  temperature: 0.1,
+  useMemory: true,
+  applicationName: "MyRadixApp"
+});
+```
+
+### Conversation with Memory
+
+```typescript
+// Agent remembers context across calls when useMemory: true
+await agent.run("Create a token called MyToken with 1M supply");
+await agent.run("Now send 1000 MyToken to Alice"); // Remembers MyToken
+await agent.run("How much MyToken do I have left?"); // Still remembers
+```
+
+### Error Handling
+
+```typescript
+try {
+  const response = await agent.run("Send 1000000 XRD to invalid_address");
+  console.log(response);
+} catch (error) {
+  console.error("Agent error:", error.message);
+  
+  // Common error types:
+  // - "Insufficient funds"
+  // - "Invalid address format"
+  // - "Network connection failed"
+  // - "OpenAI API error"
+}
+```
+
+### Custom Tool Integration
+
+```typescript
+class PriceCheckerTool extends RadixTool {
+  name = "check_price";
+  description = "Check token prices from external API";
+  
+  async _call(input: string): Promise\<string> {
+    // Your custom price checking logic
+    const price = await this.fetchTokenPrice(input);
+    return `Current price: $${price}`;
+  }
+  
+  private async fetchTokenPrice(token: string): Promise\<number> {
+    // Implement price fetching logic
+    return 1.23;
+  }
+}
+
+// Add to agent
+const priceChecker = new PriceCheckerTool(gateway, builder, wallet, networkId);
+agent.addTool(priceChecker);
+
+// Use in conversation
+const response = await agent.run("Check price of XRD");
+```
+
+---
+
+<Note>
+**Memory Usage**: When `useMemory: true`, the agent maintains conversation context. This uses more memory but provides better user experience for multi-step operations.
+</Note> 

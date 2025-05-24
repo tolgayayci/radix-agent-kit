@@ -1,0 +1,170 @@
+---
+title: "DeFi API"
+description: "Complete API reference for DeFi operations"
+---
+
+## DeFi
+
+Class for managing DeFi operations including staking, liquidity, and swaps.
+
+### Constructor
+
+```typescript
+new DeFi(
+  transactionBuilder: RadixTransactionBuilder,
+  gatewayClient: RadixGatewayClient,
+  networkId: number
+)
+```
+
+## Staking Operations
+
+### stakeXRD()
+Stake XRD with validators.
+
+```typescript
+async stakeXRD(
+  options: StakeXRDOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface StakeXRDOptions {
+  validatorAddress: string;
+  amount: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await defi.stakeXRD({
+  validatorAddress: "validator_tdx_2_1s...",
+  amount: "1000"
+}, wallet);
+```
+
+### unstakeXRD()
+Unstake XRD from validators.
+
+```typescript
+async unstakeXRD(
+  options: UnstakeXRDOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Example:**
+```typescript
+const txHash = await defi.unstakeXRD({
+  validatorAddress: "validator_tdx_2_1s...",
+  unstakeAmount: "500"
+}, wallet);
+```
+
+## Liquidity Pool Operations
+
+### addLiquidity()
+Add liquidity to two-resource pools.
+
+```typescript
+async addLiquidity(
+  options: AddLiquidityOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface AddLiquidityOptions {
+  poolAddress: string;
+  resourceAddress1: string;
+  amount1: string;
+  resourceAddress2: string;
+  amount2: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await defi.addLiquidity({
+  poolAddress: "component_tdx_2_1c...",
+  resourceAddress1: "resource_tdx_2_1t...",
+  amount1: "100",
+  resourceAddress2: "resource_tdx_2_1n...",
+  amount2: "50"
+}, wallet);
+```
+
+### removeLiquidity()
+Remove liquidity from pools.
+
+```typescript
+async removeLiquidity(
+  options: RemoveLiquidityOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Example:**
+```typescript
+const txHash = await defi.removeLiquidity({
+  poolAddress: "component_tdx_2_1c...",
+  lpTokenAmount: "10"
+}, wallet);
+```
+
+### swapTokens()
+Swap tokens through liquidity pools.
+
+```typescript
+async swapTokens(
+  options: SwapTokensOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface SwapTokensOptions {
+  poolAddress: string;
+  inputResourceAddress: string;
+  inputAmount: string;
+  outputResourceAddress: string;
+  minimumOutputAmount?: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await defi.swapTokens({
+  poolAddress: "component_tdx_2_1c...",
+  inputResourceAddress: "resource_tdx_2_1t...",
+  inputAmount: "100",
+  outputResourceAddress: "resource_tdx_2_1n...",
+  minimumOutputAmount: "95"
+}, wallet);
+```
+
+## Pool Information
+
+### getPoolInfo()
+Get information about liquidity pools.
+
+```typescript
+async getPoolInfo(poolAddress: string): Promise\<PoolInfo>
+```
+
+**Example:**
+```typescript
+const poolInfo = await defi.getPoolInfo("component_tdx_2_1c...");
+console.log("Pool reserves:", poolInfo.reserves);
+console.log("Total LP tokens:", poolInfo.totalSupply);
+```
+
+---
+
+<Note>
+**DeFi Safety**: Always set slippage tolerance and verify pool addresses before executing swaps or liquidity operations.
+</Note> 

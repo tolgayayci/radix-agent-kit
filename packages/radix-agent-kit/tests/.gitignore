@@ -1,0 +1,17 @@
+# Test coverage outputs
+coverage/
+.nyc_output/
+
+# Jest related files
+jest-cache/
+test-report.xml
+junit.xml
+
+# Test environment files
+.env.test.local
+.env.test
+
+# Temporary test files
+test-temp/
+test-results/
+fixtures/temp/ 

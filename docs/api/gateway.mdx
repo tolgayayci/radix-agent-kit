@@ -1,0 +1,409 @@
+---
+title: "Gateway Client API"
+description: "Complete API reference for RadixGatewayClient"
+---
+
+## RadixGatewayClient
+
+The gateway client handles all communication with the Radix network through the Gateway API.
+
+### Constructor
+
+```typescript
+new RadixGatewayClient(config: GatewayConfig)
+```
+
+#### GatewayConfig
+
+```typescript
+interface GatewayConfig {
+  networkId: RadixNetwork;          // Network to connect to
+  applicationName?: string;         // App name for analytics
+  customEndpoint?: string;          // Custom gateway endpoint
+}
+```
+
+**Example:**
+```typescript
+const gateway = new RadixGatewayClient({
+  networkId: RadixNetwork.Stokenet,
+  applicationName: "MyRadixApp"
+});
+```
+
+## Network Information
+
+### getGatewayStatus()
+Get current gateway status and information.
+
+```typescript
+async getGatewayStatus(): Promise\<GatewayStatus>
+```
+
+**Returns:** Gateway status information
+
+**Example:**
+```typescript
+const status = await gateway.getGatewayStatus();
+console.log("Gateway version:", status.release_info?.version);
+```
+
+### getCurrentEpoch()
+Get the current epoch number.
+
+```typescript
+async getCurrentEpoch(): Promise\<number>
+```
+
+**Returns:** Current epoch number
+
+**Example:**
+```typescript
+const epoch = await gateway.getCurrentEpoch();
+console.log("Current epoch:", epoch);
+```
+
+### getNetworkConfiguration()
+Get network configuration details.
+
+```typescript
+async getNetworkConfiguration(): Promise\<NetworkConfig>
+```
+
+**Returns:** Network configuration
+
+**Example:**
+```typescript
+const config = await gateway.getNetworkConfiguration();
+console.log("Network ID:", config.network_id);
+```
+
+## Account Operations
+
+### getEntityDetails()
+Get detailed information about any entity (account, component, resource).
+
+```typescript
+async getEntityDetails(address: string): Promise\<EntityDetails>
+```
+
+**Parameters:**
+- `address`: Entity address to query
+
+**Returns:** Entity details and metadata
+
+**Example:**
+```typescript
+const details = await gateway.getEntityDetails("account_tdx_...");
+console.log("Entity type:", details.entity_type);
+```
+
+### getAccountBalances()
+Get all token balances for an account.
+
+```typescript
+async getAccountBalances(accountAddress: string): Promise\<AccountBalancesResponse>
+```
+
+**Parameters:**
+- `accountAddress`: Account address to query
+
+**Returns:** Account balances response
+
+**Example:**
+```typescript
+const balances = await gateway.getAccountBalances("account_tdx_...");
+for (const item of balances.items[0].fungible_resources?.items || []) {
+  console.log(`Balance: ${item.amount} of ${item.resource_address}`);
+}
+```
+
+### getAccountTransactionHistory()
+Get transaction history for an account.
+
+```typescript
+async getAccountTransactionHistory(
+  accountAddress: string,
+  options?: TransactionHistoryOptions
+): Promise\<TransactionHistoryResponse>
+```
+
+**Parameters:**
+- `accountAddress`: Account address
+- `options`: Optional filters and pagination
+
+```typescript
+interface TransactionHistoryOptions {
+  limit?: number;           // Max transactions to return (default: 30)
+  cursor?: string;          // Pagination cursor
+  manifestClass?: string;   // Filter by manifest class
+}
+```
+
+**Example:**
+```typescript
+const history = await gateway.getAccountTransactionHistory("account_tdx_...", {
+  limit: 10
+});
+
+history.items.forEach(tx => {
+  console.log(`TX: ${tx.intent_hash} at ${tx.confirmed_at}`);
+});
+```
+
+## Transaction Operations
+
+### submitTransaction()
+Submit a signed transaction to the network.
+
+```typescript
+async submitTransaction(signedTransaction: CompiledTransaction): Promise\<TransactionSubmitResponse>
+```
+
+**Parameters:**
+- `signedTransaction`: Compiled and signed transaction
+
+**Returns:** Transaction submission response
+
+**Example:**
+```typescript
+const result = await gateway.submitTransaction(signedTx);
+console.log("Transaction ID:", result.duplicate || "submitted");
+```
+
+### getTransactionStatus()
+Get status of a submitted transaction.
+
+```typescript
+async getTransactionStatus(transactionId: string): Promise\<TransactionStatusResponse>
+```
+
+**Parameters:**
+- `transactionId`: Transaction intent hash
+
+**Returns:** Transaction status
+
+**Example:**
+```typescript
+const status = await gateway.getTransactionStatus("txid_...");
+console.log("Status:", status.intent_status);
+```
+
+### previewTransaction()
+Preview a transaction without submitting it.
+
+```typescript
+async previewTransaction(
+  transactionManifest: string,
+  startEpochInclusive: number,
+  endEpochExclusive: number,
+  signer?: string
+): Promise\<TransactionPreviewResponse>
+```
+
+**Parameters:**
+- `transactionManifest`: Transaction manifest string
+- `startEpochInclusive`: Start epoch
+- `endEpochExclusive`: End epoch  
+- `signer`: Optional signer public key
+
+**Returns:** Transaction preview
+
+**Example:**
+```typescript
+const preview = await gateway.previewTransaction(
+  manifest,
+  epoch,
+  epoch + 10,
+  wallet.getPublicKey()
+);
+console.log("Estimated fee:", preview.receipt.fee_summary?.total_cost);
+```
+
+## Resource Operations
+
+### getResourceDetails()
+Get details about a resource (token).
+
+```typescript
+async getResourceDetails(resourceAddress: string): Promise\<ResourceDetails>
+```
+
+**Parameters:**
+- `resourceAddress`: Resource address
+
+**Returns:** Resource details and metadata
+
+**Example:**
+```typescript
+const resource = await gateway.getResourceDetails("resource_tdx_...");
+console.log("Resource type:", resource.resource_type);
+```
+
+### getResourceMetadata()
+Get metadata for a resource.
+
+```typescript
+async getResourceMetadata(resourceAddress: string): Promise\<ResourceMetadata>
+```
+
+**Parameters:**
+- `resourceAddress`: Resource address
+
+**Returns:** Resource metadata
+
+**Example:**
+```typescript
+const metadata = await gateway.getResourceMetadata("resource_tdx_...");
+const symbol = metadata.items.find(item => item.key === "symbol")?.value;
+console.log("Token symbol:", symbol);
+```
+
+## Component Operations
+
+### getComponentDetails()
+Get details about a component (smart contract).
+
+```typescript
+async getComponentDetails(componentAddress: string): Promise\<ComponentDetails>
+```
+
+**Parameters:**
+- `componentAddress`: Component address
+
+**Returns:** Component details
+
+**Example:**
+```typescript
+const component = await gateway.getComponentDetails("component_tdx_...");
+console.log("Component type:", component.package_address);
+```
+
+### getComponentState()
+Get current state of a component.
+
+```typescript
+async getComponentState(componentAddress: string): Promise\<ComponentState>
+```
+
+**Parameters:**
+- `componentAddress`: Component address
+
+**Returns:** Component state
+
+**Example:**
+```typescript
+const state = await gateway.getComponentState("component_tdx_...");
+console.log("Component state:", state.state);
+```
+
+## Validation Methods
+
+### isValidAddress()
+Check if an address is valid for the current network.
+
+```typescript
+isValidAddress(address: string): boolean
+```
+
+**Parameters:**
+- `address`: Address to validate
+
+**Returns:** true if valid
+
+**Example:**
+```typescript
+const valid = gateway.isValidAddress("account_tdx_...");
+console.log("Address valid:", valid);
+```
+
+### getXRDResourceAddress()
+Get the XRD resource address for the current network.
+
+```typescript
+getXRDResourceAddress(): string
+```
+
+**Returns:** XRD resource address
+
+**Example:**
+```typescript
+const xrdAddress = gateway.getXRDResourceAddress();
+console.log("XRD address:", xrdAddress);
+```
+
+## Error Handling
+
+Gateway operations can throw various errors:
+
+```typescript
+try {
+  const balance = await gateway.getAccountBalances("invalid_address");
+} catch (error) {
+  if (error.message.includes("not found")) {
+    console.log("Account does not exist");
+  } else if (error.message.includes("network")) {
+    console.log("Network connection issue");
+  } else {
+    console.log("Other error:", error.message);
+  }
+}
+```
+
+## Common Error Types
+
+- **EntityNotFoundError**: Entity does not exist
+- **NetworkError**: Connection or gateway issues
+- **ValidationError**: Invalid input parameters
+- **RateLimitError**: Too many requests
+
+## Performance Tips
+
+### Connection Reuse
+```typescript
+// ✅ Good: Reuse the same gateway instance
+const gateway = new RadixGatewayClient({ networkId: RadixNetwork.Stokenet });
+
+// Use for multiple operations
+const balance1 = await gateway.getAccountBalances(address1);
+const balance2 = await gateway.getAccountBalances(address2);
+```
+
+### Batch Operations
+```typescript
+// ✅ Better: Use Promise.all for parallel requests
+const [balance1, balance2, epoch] = await Promise.all([
+  gateway.getAccountBalances(address1),
+  gateway.getAccountBalances(address2),
+  gateway.getCurrentEpoch()
+]);
+```
+
+### Error Recovery
+```typescript
+async function robustGatewayCall<T>(
+  operation: () => Promise\<T>,
+  retries: number = 3
+): Promise\<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
+// Usage
+const balance = await robustGatewayCall(() => 
+  gateway.getAccountBalances(address)
+);
+```
+
+---
+
+<Note>
+**Gateway Endpoints**: The client automatically connects to the correct gateway endpoint based on networkId. Stokenet uses the testnet gateway, Mainnet uses the production gateway.
+</Note> 

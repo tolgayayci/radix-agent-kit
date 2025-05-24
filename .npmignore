@@ -1,0 +1,26 @@
+# Source files
+src/
+tests/
+scripts/
+docs/
+
+# Config files
+tsconfig.json
+jest.config.js
+.eslintrc.json
+
+# Development files
+.gitkeep
+*.test.ts
+*.spec.ts
+
+# Coverage
+coverage/
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.example 

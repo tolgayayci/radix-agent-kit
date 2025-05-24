@@ -1,0 +1,558 @@
+---
+title: "Security & Wallet Management"
+description: "Security best practices and wallet management for Radix Agent Kit"
+---
+
+## Overview
+
+Security is paramount when building AI-powered blockchain applications. This guide covers wallet management, security best practices, and how to keep your Radix Agent Kit applications secure.
+
+## 🔐 Wallet Types
+
+Radix Agent Kit supports multiple wallet implementations for different security needs:
+
+### MnemonicWallet (Default)
+
+**Best for**: Development, testing, and automated applications
+
+```javascript
+import { RadixMnemonicWallet, RadixNetwork } from "radix-agent-kit";
+
+// Generate a new wallet
+const wallet = RadixMnemonicWallet.generateRandom({
+  networkId: RadixNetwork.Stokenet,
+});
+
+// Import existing wallet
+const wallet = RadixMnemonicWallet.fromMnemonic("your 24 word phrase", {
+  networkId: RadixNetwork.Stokenet,
+});
+```
+
+**Features**:
+
+- 24-word BIP-39 mnemonic phrases
+- Compatible with Radix Wallet app
+- Deterministic key derivation
+- Multiple account support
+
+**Security Considerations**:
+
+- Store mnemonic securely (environment variables, vaults)
+- Never log or expose mnemonic phrases
+- Use testnet for development
+
+### HardwareWallet (Future)
+
+**Best for**: High-value applications and enhanced security
+
+```javascript
+// Future implementation
+import { HardwareWallet } from "radix-agent-kit";
+
+const wallet = new HardwareWallet({
+  deviceType: "ledger",
+  networkId: RadixNetwork.Mainnet,
+});
+```
+
+**Features** (Planned):
+
+- Ledger hardware wallet support
+- Secure key storage on device
+- Transaction signing on hardware
+- Air-gapped security
+
+### VaultWallet
+
+**Best for**: Enterprise applications and secure key management
+
+```javascript
+import { VaultWallet } from "radix-agent-kit";
+
+const wallet = new VaultWallet({
+  vaultUrl: "https://vault.company.com",
+  keyPath: "secret/radix/agent-key",
+  networkId: RadixNetwork.Mainnet,
+});
+```
+
+**Features**:
+
+- HashiCorp Vault integration
+- Centralized key management
+- Audit logging
+- Role-based access control
+
+## 🛡️ Security Best Practices
+
+### Environment Variables
+
+**Never hardcode sensitive information**:
+
+```javascript
+// ❌ BAD: Hardcoded secrets
+const agent = new RadixAgent({
+  mnemonic: "abandon abandon abandon...", // Never do this!
+  openaiApiKey: "sk-1234567890abcdef",
+});
+
+// ✅ GOOD: Use environment variables
+const agent = new RadixAgent({
+  mnemonic: process.env.RADIX_MNEMONIC,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+});
+```
+
+### Secure .env File
+
+Create a `.env` file with proper permissions:
+
+```bash
+# Set restrictive permissions
+chmod 600 .env
+
+# .env file content
+RADIX_MNEMONIC=your_24_word_mnemonic_phrase_here
+OPENAI_API_KEY=your_openai_api_key_here
+RADIX_NETWORK=stokenet
+```
+
+### Network Separation
+
+**Always use testnet for development**:
+
+```javascript
+// Development environment
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet, // Testnet
+  mnemonic: process.env.DEV_MNEMONIC,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+});
+
+// Production environment (separate keys!)
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Mainnet,
+  mnemonic: process.env.PROD_MNEMONIC, // Different mnemonic!
+  openaiApiKey: process.env.OPENAI_API_KEY,
+});
+```
+
+## 🔒 Key Management
+
+### Mnemonic Generation
+
+**Generate secure mnemonics**:
+
+```javascript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+// Generate cryptographically secure mnemonic
+const wallet = RadixMnemonicWallet.generateRandom({
+  networkId: RadixNetwork.Stokenet,
+});
+
+console.log("Mnemonic:", wallet.getMnemonic());
+console.log("Address:", wallet.getAddress());
+
+// ⚠️ IMPORTANT: New wallets start with zero balance!
+// You must fund them manually before use:
+// 1. Copy the address above
+// 2. Get testnet XRD from Radix Dashboard or Discord faucets
+// 3. For mainnet, transfer from existing funded wallet
+
+// Validate mnemonic strength
+const isValid = RadixMnemonicWallet.validateMnemonic(mnemonic);
+const strength = RadixMnemonicWallet.getMnemonicStrength(mnemonic);
+console.log(`Mnemonic is valid: ${isValid}, Strength: ${strength} bits`);
+```
+
+<Warning>
+**Generated wallets are empty!** Programmatically created wallets have zero XRD balance. Always fund new wallets before attempting transactions:
+- **Testnet**: Use [Stokenet Dashboard](https://stokenet-dashboard.radixdlt.com/) or [Discord faucets](https://discord.gg/radixdlt)
+- **Mainnet**: Transfer from existing funded wallet or exchange
+</Warning>
+
+### Key Rotation
+
+**Regularly rotate keys for production applications**:
+
+```javascript
+// Key rotation strategy
+class SecureAgentManager {
+  constructor() {
+    this.currentWallet = null;
+    this.keyRotationInterval = 30 * 24 * 60 * 60 * 1000; // 30 days
+  }
+
+  async rotateKeys() {
+    const oldWallet = this.currentWallet;
+    const newWallet = RadixMnemonicWallet.generateRandom({
+      networkId: RadixNetwork.Mainnet,
+    });
+
+    // Transfer funds from old to new wallet
+    if (oldWallet) {
+      await this.transferAllFunds(oldWallet, newWallet);
+    }
+
+    this.currentWallet = newWallet;
+
+    // Securely store new mnemonic
+    await this.storeSecurely(newWallet.getMnemonic());
+  }
+}
+```
+
+### Multi-Account Management
+
+**Use different accounts for different purposes**:
+
+```javascript
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, {
+  networkId: RadixNetwork.Mainnet,
+});
+
+// Derive multiple accounts from same mnemonic
+const tradingAccount = await wallet.deriveAccount(0);
+const stakingAccount = await wallet.deriveAccount(1);
+const treasuryAccount = await wallet.deriveAccount(2);
+
+console.log("Trading:", tradingAccount.address);
+console.log("Staking:", stakingAccount.address);
+console.log("Treasury:", treasuryAccount.address);
+```
+
+## 🚨 Transaction Security
+
+### Input Validation
+
+**Always validate user inputs**:
+
+```javascript
+function validateTransferInput(address, amount) {
+  // Validate Radix address format
+  if (!address.startsWith("account_tdx_") && !address.startsWith("rdx1")) {
+    throw new Error("Invalid Radix address format");
+  }
+
+  // Validate amount
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Invalid amount");
+  }
+
+  // Check reasonable limits
+  if (amount > 1000000) {
+    throw new Error("Amount exceeds safety limit");
+  }
+
+  return true;
+}
+
+// Use validation before transactions
+async function safeTransfer(agent, address, amount) {
+  try {
+    validateTransferInput(address, amount);
+    return await agent.run(`Send ${amount} XRD to ${address}`);
+  } catch (error) {
+    console.error("Transfer validation failed:", error.message);
+    throw error;
+  }
+}
+```
+
+### Rate Limiting
+
+**Implement rate limiting for agent operations**:
+
+```javascript
+class RateLimitedAgent {
+  constructor(agent, maxOperationsPerMinute = 10) {
+    this.agent = agent;
+    this.operations = [];
+    this.maxOps = maxOperationsPerMinute;
+  }
+
+  async run(query) {
+    const now = Date.now();
+
+    // Remove operations older than 1 minute
+    this.operations = this.operations.filter((time) => now - time < 60000);
+
+    // Check rate limit
+    if (this.operations.length >= this.maxOps) {
+      throw new Error(
+        "Rate limit exceeded. Please wait before next operation."
+      );
+    }
+
+    // Record operation
+    this.operations.push(now);
+
+    // Execute with timeout
+    return Promise.race([
+      this.agent.run(query),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Operation timeout")), 30000)
+      ),
+    ]);
+  }
+}
+```
+
+### Transaction Confirmation
+
+**Implement confirmation for high-value operations**:
+
+```javascript
+class ConfirmationAgent {
+  constructor(agent, confirmationThreshold = 1000) {
+    this.agent = agent;
+    this.threshold = confirmationThreshold;
+  }
+
+  async run(query) {
+    // Check if operation needs confirmation
+    if (this.needsConfirmation(query)) {
+      console.log(`⚠️  High-value operation detected: ${query}`);
+      console.log('Please confirm by typing "CONFIRM" within 30 seconds:');
+
+      const confirmed = await this.waitForConfirmation();
+      if (!confirmed) {
+        throw new Error("Operation cancelled - no confirmation received");
+      }
+    }
+
+    return await this.agent.run(query);
+  }
+
+  needsConfirmation(query) {
+    // Simple pattern matching for high-value operations
+    const patterns = [
+      /send\s+(\d+)\s+xrd/i,
+      /transfer\s+(\d+)/i,
+      /stake\s+(\d+)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = query.match(pattern);
+      if (match && parseFloat(match[1]) > this.threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+```
+
+## 🔍 Monitoring & Logging
+
+### Secure Logging
+
+**Log operations without exposing sensitive data**:
+
+```javascript
+class SecureLogger {
+  static logOperation(operation, success, details = {}) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      operation: operation,
+      success: success,
+      // Never log private keys, mnemonics, or full addresses
+      account: details.account ? this.maskAddress(details.account) : null,
+      amount: details.amount || null,
+      transactionId: details.txId || null,
+    };
+
+    console.log(JSON.stringify(logEntry));
+  }
+
+  static maskAddress(address) {
+    if (!address) return null;
+    return (
+      address.substring(0, 10) + "..." + address.substring(address.length - 6)
+    );
+  }
+}
+
+// Usage
+SecureLogger.logOperation("transfer", true, {
+  account: "account_tdx_2_1c8atrq...",
+  amount: 100,
+  txId: "txid_abc123...",
+});
+```
+
+### Error Handling
+
+**Handle errors securely without exposing internals**:
+
+```javascript
+async function secureAgentOperation(agent, query) {
+  try {
+    const result = await agent.run(query);
+    SecureLogger.logOperation("agent_query", true, {
+      query: query.substring(0, 50),
+    });
+    return { success: true, result };
+  } catch (error) {
+    // Log error without exposing sensitive details
+    SecureLogger.logOperation("agent_query", false, {
+      error: error.message,
+      query: query.substring(0, 50),
+    });
+
+    // Return generic error to user
+    return {
+      success: false,
+      error: "Operation failed. Please check your input and try again.",
+    };
+  }
+}
+```
+
+## 🏢 Production Deployment
+
+### Environment Separation
+
+**Use different configurations for different environments**:
+
+```javascript
+// config/production.js
+export const productionConfig = {
+  networkId: RadixNetwork.Mainnet,
+  logLevel: "warn",
+  rateLimitPerMinute: 5,
+  confirmationRequired: true,
+  monitoringEnabled: true,
+};
+
+// config/development.js
+export const developmentConfig = {
+  networkId: RadixNetwork.Stokenet,
+  logLevel: "debug",
+  rateLimitPerMinute: 100,
+  confirmationRequired: false,
+  monitoringEnabled: false,
+};
+```
+
+### Health Monitoring
+
+**Monitor agent health and performance**:
+
+```javascript
+class AgentHealthMonitor {
+  constructor(agent) {
+    this.agent = agent;
+    this.metrics = {
+      totalOperations: 0,
+      successfulOperations: 0,
+      failedOperations: 0,
+      averageResponseTime: 0,
+    };
+  }
+
+  async monitoredRun(query) {
+    const startTime = Date.now();
+    this.metrics.totalOperations++;
+
+    try {
+      const result = await this.agent.run(query);
+      this.metrics.successfulOperations++;
+      this.updateResponseTime(Date.now() - startTime);
+      return result;
+    } catch (error) {
+      this.metrics.failedOperations++;
+      throw error;
+    }
+  }
+
+  getHealthStatus() {
+    const successRate =
+      this.metrics.successfulOperations / this.metrics.totalOperations;
+    return {
+      healthy: successRate > 0.95,
+      successRate: successRate,
+      averageResponseTime: this.metrics.averageResponseTime,
+      totalOperations: this.metrics.totalOperations,
+    };
+  }
+}
+```
+
+## 🚨 Security Checklist
+
+### Development
+
+- [ ] Use testnet (Stokenet) for all development
+- [ ] Store secrets in environment variables
+- [ ] Never commit private keys or mnemonics
+- [ ] Implement proper error handling
+- [ ] Add input validation
+- [ ] Use rate limiting
+
+### Production
+
+- [ ] Use separate production keys
+- [ ] Implement transaction confirmation for high values
+- [ ] Set up monitoring and alerting
+- [ ] Regular security audits
+- [ ] Key rotation strategy
+- [ ] Backup and recovery procedures
+
+### Code Security
+
+- [ ] Regular dependency updates
+- [ ] Security linting (ESLint security rules)
+- [ ] Code review process
+- [ ] Automated security testing
+- [ ] Vulnerability scanning
+
+## 🆘 Incident Response
+
+### Compromised Keys
+
+If you suspect your keys are compromised:
+
+1. **Immediately stop the agent**
+2. **Generate new wallet with fresh mnemonic**
+3. **Transfer all funds to new wallet**
+4. **Revoke old API keys**
+5. **Review logs for suspicious activity**
+6. **Update all environment configurations**
+
+### Emergency Procedures
+
+```javascript
+// Emergency wallet drain function
+async function emergencyDrain(compromisedWallet, safeWallet) {
+  try {
+    const balances = await gateway.getAccountBalances(
+      compromisedWallet.getAddress()
+    );
+
+    for (const balance of balances) {
+      if (balance.amount > 0) {
+        await transferAllFunds(
+          compromisedWallet,
+          safeWallet.getAddress(),
+          balance.resource
+        );
+      }
+    }
+
+    console.log("Emergency drain completed");
+  } catch (error) {
+    console.error("Emergency drain failed:", error);
+  }
+}
+```
+
+## 📚 Additional Resources
+
+- [Radix Security Best Practices](https://docs.radixdlt.com/docs/security)
+- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
+- [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)
+
+Remember: Security is an ongoing process, not a one-time setup. Regularly review and update your security practices as your application grows.

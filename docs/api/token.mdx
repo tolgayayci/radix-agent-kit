@@ -1,0 +1,166 @@
+---
+title: "Token API"
+description: "Complete API reference for Token operations"
+---
+
+## Token
+
+Class for managing fungible and non-fungible token operations.
+
+### Constructor
+
+```typescript
+new Token(
+  transactionBuilder: RadixTransactionBuilder,
+  gatewayClient: RadixGatewayClient,
+  networkId: number
+)
+```
+
+## Fungible Token Operations
+
+### createFungibleToken()
+Create new fungible token.
+
+```typescript
+async createFungibleToken(
+  options: FungibleResourceOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface FungibleResourceOptions {
+  name: string;
+  symbol: string;
+  description?: string;
+  iconUrl?: string;
+  infoUrl?: string;
+  initialSupply: string;
+  divisibility?: number;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await token.createFungibleToken({
+  name: "MyToken",
+  symbol: "MTK", 
+  description: "My awesome token",
+  initialSupply: "1000000"
+}, wallet);
+```
+
+### transferToken()
+Transfer tokens between accounts.
+
+```typescript
+async transferToken(
+  options: TokenTransferOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface TokenTransferOptions {
+  toAddress: string;
+  amount: string;
+  resourceAddress: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await token.transferToken({
+  toAddress: "account_tdx_2_12x...",
+  amount: "100",
+  resourceAddress: "resource_tdx_..."
+}, wallet);
+```
+
+### getTokenMetadata()
+Get token metadata and information.
+
+```typescript
+async getTokenMetadata(resourceAddress: string): Promise\<TokenMetadata>
+```
+
+**Example:**
+```typescript
+const metadata = await token.getTokenMetadata("resource_tdx_...");
+console.log("Symbol:", metadata.symbol);
+console.log("Name:", metadata.name);
+```
+
+## NFT Operations
+
+### createNFTCollection()
+Create new NFT collection.
+
+```typescript
+async createNFTCollection(
+  options: NonFungibleResourceOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface NonFungibleResourceOptions {
+  name: string;
+  description?: string;
+  iconUrl?: string;
+  collectionUrl?: string;
+  keyValueSchema?: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await token.createNFTCollection({
+  name: "MyNFTs",
+  description: "My NFT collection",
+  iconUrl: "https://example.com/icon.png"
+}, wallet);
+```
+
+### mintNFT()
+Mint new NFT in collection.
+
+```typescript
+async mintNFT(
+  options: NFTMintOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface NFTMintOptions {
+  resourceAddress: string;
+  nonFungibleLocalId: string;
+  metadata: Record\<string, any\>;
+  recipientAddress?: string;
+}
+```
+
+**Example:**
+```typescript
+const txHash = await token.mintNFT({
+  resourceAddress: "resource_tdx_...",
+  nonFungibleLocalId: "001",
+  metadata: {
+    name: "Cool NFT #1",
+    description: "A very cool NFT",
+    image: "https://example.com/nft1.png"
+  }
+}, wallet);
+```
+
+---
+
+<Note>
+**Token Standards**: Follows Radix token standards with full metadata support and automatic divisibility handling.
+</Note> 

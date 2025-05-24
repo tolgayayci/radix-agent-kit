@@ -1,0 +1,91 @@
+---
+title: "Component API"
+description: "Complete API reference for smart contract interactions"
+---
+
+## Component
+
+Class for interacting with smart contracts (components) on Radix.
+
+### Constructor
+
+```typescript
+new Component(
+  transactionBuilder: RadixTransactionBuilder,
+  gatewayClient: RadixGatewayClient,
+  networkId: number
+)
+```
+
+## Component Operations
+
+### callMethod()
+Call methods on smart contracts.
+
+```typescript
+async callMethod(
+  options: CallComponentMethodOptions,
+  wallet: RadixWallet
+): Promise\<string>
+```
+
+**Parameters:**
+```typescript
+interface CallComponentMethodOptions {
+  componentAddress: string;
+  methodName: string;
+  args?: any[];
+  resourceInputs?: ResourceInput[];
+  resourceOutputs?: ResourceOutput[];
+}
+```
+
+**Example:**
+```typescript
+const txHash = await component.callMethod({
+  componentAddress: "component_tdx_2_1c...",
+  methodName: "buy_tokens",
+  args: ["100", "USDT"],
+  resourceInputs: [{
+    resourceAddress: "resource_tdx_2_1t...",
+    amount: "100"
+  }]
+}, wallet);
+```
+
+### getComponentState()
+Get current state of a component.
+
+```typescript
+async getComponentState(
+  options: GetComponentStateOptions
+): Promise\<ComponentState>
+```
+
+**Example:**
+```typescript
+const state = await component.getComponentState({
+  componentAddress: "component_tdx_2_1c..."
+});
+console.log("Component state:", state);
+```
+
+### getComponentInfo()
+Get detailed component information.
+
+```typescript
+async getComponentInfo(componentAddress: string): Promise\<ComponentInfo>
+```
+
+**Example:**
+```typescript
+const info = await component.getComponentInfo("component_tdx_2_1c...");
+console.log("Package address:", info.packageAddress);
+console.log("Blueprint name:", info.blueprintName);
+```
+
+---
+
+<Note>
+**Smart Contracts**: Components are Radix's smart contracts. Always verify component addresses and method signatures before calling.
+</Note> 

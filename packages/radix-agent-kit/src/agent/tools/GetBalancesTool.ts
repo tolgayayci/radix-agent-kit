@@ -57,7 +57,8 @@ This account exists but currently holds no fungible tokens. To receive tokens, y
 
         // Format balances with better presentation
         const balanceStrings = fungibleResources.map((resource: any) => {
-          const amount = parseFloat(resource.amount);
+          // Get amount from vaults.items[0].amount (correct path based on Gateway API)
+          const amount = resource.vaults?.items?.[0]?.amount ? parseFloat(resource.vaults.items[0].amount) : 0;
           const formattedAmount = amount.toLocaleString(undefined, {
             minimumFractionDigits: 0,
             maximumFractionDigits: 6

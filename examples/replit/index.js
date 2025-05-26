@@ -49,15 +49,17 @@ async function main() {
     });
 
     // If no mnemonic provided, generate new wallet
+    let walletInfo = null;
     if (!process.env.RADIX_MNEMONIC) {
       log(styles.warning, '🔑 No mnemonic provided, generating new wallet...');
-      const { wallet, mnemonic } = agent.generateNewWallet();
-      log(styles.success, `✅ New wallet created: ${wallet.getAddress()}`);
-      log(styles.warning, `💾 Save this mnemonic: ${mnemonic}`);
+      walletInfo = agent.generateNewWallet();
+      log(styles.success, `✅ New wallet created: ${walletInfo.wallet.getAddress()}`);
+      log(styles.warning, `💾 Save this mnemonic: ${walletInfo.mnemonic}`);
       console.log();
     }
 
-    const walletAddress = agent.getWallet()?.getAddress();
+    const wallet = agent.getWallet();
+    const walletAddress = wallet ? wallet.getAddress() : 'No wallet available';
     log(styles.success, `✅ Agent initialized successfully!`);
     log(styles.info, `📍 Wallet Address: ${walletAddress}`);
     log(styles.info, `🌐 Network: Stokenet (Testnet)`);

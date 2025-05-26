@@ -22,6 +22,11 @@ export class CreateFungibleResourceTool extends RadixTool {
 
   async _call(input: string): Promise<string> {
     try {
+      // Validate input before parsing
+      if (!input || input.trim().length === 0) {
+        return "❌ Invalid input. Please provide token name, symbol, and initial supply.\nFormat: 'name,symbol,initialSupply[,divisibility]' or JSON: {'name': 'MyToken', 'symbol': 'MTK', 'initialSupply': '1000000', 'divisibility': 18}";
+      }
+
       let name: string;
       let symbol: string;
       let initialSupply: string;
@@ -30,7 +35,7 @@ export class CreateFungibleResourceTool extends RadixTool {
       // Parse input
       const parsed = this.parseInput(input);
 
-      if (parsed.parts) {
+      if (parsed.parts && parsed.parts.length > 0) {
         // Handle comma-separated format
         const parts = parsed.parts;
         if (parts.length < 3) {

@@ -22,13 +22,18 @@ export class StakeXRDTool extends RadixTool {
 
   async _call(input: string): Promise<string> {
     try {
+      // Validate input before parsing
+      if (!input || input.trim().length === 0) {
+        return "❌ Invalid input. Please provide validator address and amount.\nFormat: 'validatorAddress,amount' or JSON: {'validatorAddress': 'component_...', 'amount': '100'}";
+      }
+
       let validatorAddress: string;
       let amount: string;
 
       // Parse input
       const parsed = this.parseInput(input);
 
-      if (parsed.parts) {
+      if (parsed.parts && parsed.parts.length > 0) {
         // Handle comma-separated format
         const parts = parsed.parts;
         if (parts.length < 2) {

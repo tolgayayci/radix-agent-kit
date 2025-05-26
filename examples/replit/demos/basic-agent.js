@@ -18,16 +18,29 @@ async function basicDemo() {
       applicationName: 'BasicDemo'
     });
 
-    // If no mnemonic, generate new wallet
+    // If no mnemonic, generate new wallet with PROPER address
     if (!process.env.RADIX_MNEMONIC) {
-      const { wallet, mnemonic } = agent.generateNewWallet();
-      console.log(`🔑 New wallet: ${wallet.getAddress()}`);
-      console.log(`💾 Mnemonic: ${mnemonic}\n`);
+      const walletInfo = await agent.generateNewWalletAsync();
+      console.log(`🔑 New wallet: ${walletInfo.wallet.getAddress()}`);
+      console.log(`💾 Mnemonic: ${walletInfo.mnemonic}\n`);
     }
 
-    console.log(`📍 Wallet: ${agent.getWallet()?.getAddress()}\n`);
+    const wallet = agent.getWallet();
+    const walletAddress = wallet ? wallet.getAddress() : 'No wallet available';
+    console.log(`📍 Wallet: ${walletAddress}\n`);
+
+    // Validate address format
+    if (walletAddress.startsWith('account_tdx_2_')) {
+      console.log('✅ Address format is CORRECT!\n');
+    } else {
+      console.log(`❌ Address format is WRONG: ${walletAddress}\n`);
+    }
 
     // Basic AI interactions
+    console.log('💬 Asking: "What\'s my account address?"');
+    const address = await agent.run("What's my account address?");
+    console.log(`🤖 Agent: ${address}\n`);
+
     console.log('💬 Asking: "What\'s my XRD balance?"');
     const balance = await agent.run("What's my XRD balance?");
     console.log(`🤖 Agent: ${balance}\n`);

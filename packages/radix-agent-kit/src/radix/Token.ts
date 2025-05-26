@@ -63,7 +63,7 @@ export class Token {
     try {
       const ownerAddress = ownerWallet.getAddress();
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(), // This should be the private key, but we'll work with what we have
+        ownerWallet.getPrivateKeyHex(),
         'Ed25519'
       );
 
@@ -110,7 +110,7 @@ export class Token {
     try {
       const ownerAddress = ownerWallet.getAddress();
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         'Ed25519'
       );
 
@@ -170,7 +170,7 @@ export class Token {
   ): Promise<string> {
     try {
       const senderPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        senderWallet.getPublicKey(),
+        senderWallet.getPrivateKeyHex(),
         'Ed25519'
       );
 
@@ -212,7 +212,7 @@ export class Token {
   ): Promise<string> {
     try {
       const minterPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        minterWallet.getPublicKey(),
+        minterWallet.getPrivateKeyHex(),
         'Ed25519'
       );
 
@@ -264,7 +264,7 @@ export class Token {
   ): Promise<string> {
     try {
       const minterPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        minterWallet.getPublicKey(),
+        minterWallet.getPrivateKeyHex(),
         'Ed25519'
       );
 

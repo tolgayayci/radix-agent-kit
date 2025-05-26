@@ -36,6 +36,12 @@ export interface RadixWallet {
   getPublicKey(): string;
 
   /**
+   * Gets the private key associated with the wallet.
+   * @returns The private key as a string (hex-encoded).
+   */
+  getPrivateKeyHex(): string;
+
+  /**
    * Gets the Radix account address associated with the wallet.
    * @returns The account address string.
    */
@@ -94,6 +100,10 @@ export class VaultWallet implements RadixWallet {
       throw new Error('VaultWallet.getPublicKey() not implemented. Call initialize() first.');
     }
     return this.cachedPublicKey;
+  }
+
+  getPrivateKeyHex(): string {
+    throw new Error('VaultWallet.getPrivateKeyHex() not available - private keys are stored in Vault');
   }
 
   getAddress(): string {

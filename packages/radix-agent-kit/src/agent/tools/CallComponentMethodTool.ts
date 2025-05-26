@@ -22,6 +22,11 @@ export class CallComponentMethodTool extends RadixTool {
 
   async _call(input: string): Promise<string> {
     try {
+      // Validate input before parsing
+      if (!input || input.trim().length === 0) {
+        return "❌ Invalid input. Please provide component address and method name.\nFormat: 'componentAddress,methodName[,arg1,arg2,...]' or JSON: {'componentAddress': 'component_...', 'methodName': 'method_name', 'args': ['arg1', 'arg2']}";
+      }
+
       let componentAddress: string;
       let methodName: string;
       let args: any[] = [];
@@ -29,7 +34,7 @@ export class CallComponentMethodTool extends RadixTool {
       // Parse input
       const parsed = this.parseInput(input);
 
-      if (parsed.parts) {
+      if (parsed.parts && parsed.parts.length > 0) {
         // Handle comma-separated format
         const parts = parsed.parts;
         if (parts.length < 2) {

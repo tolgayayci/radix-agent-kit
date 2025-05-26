@@ -39,8 +39,8 @@ type = "request"
 [debugger.interactive.launchMessage]
 command = "launch"
 type = "request"
-args = {
-  program = "index.js",
-  console = "externalTerminal",
-  env = {}
-} 
+
+[debugger.interactive.launchMessage.args]
+program = "index.js"
+console = "externalTerminal"
+env = {} 

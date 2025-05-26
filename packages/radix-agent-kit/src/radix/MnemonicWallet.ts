@@ -20,6 +20,7 @@ import * as crypto from "crypto";
 export interface RadixWallet {
   getAddress(): string;
   getPublicKey(): string;
+  getPrivateKeyHex(): string;
   sign(data: Uint8Array): Promise<string>;
   signTransaction(transactionHash: Uint8Array): Promise<string>;
 }
@@ -92,9 +93,25 @@ export class RadixMnemonicWallet implements RadixWallet {
     this.networkId = config.networkId;
     this.applicationName = config.applicationName || "RadixAgentKit";
 
-    // Derive the initial account (index 0 by default)
+    // Start with sync derivation for immediate availability
     const accountIndex = config.accountIndex || 0;
     this.currentAccount = this.deriveAccountSync(accountIndex);
+    
+    // Immediately start async update for proper address
+    this.initializeAccountAsync(accountIndex);
+  }
+
+  /**
+   * Initialize account asynchronously to get proper address
+   */
+  private async initializeAccountAsync(accountIndex: number): Promise<void> {
+    try {
+      const account = await this.deriveAccountAsync(accountIndex);
+      this.currentAccount = account;
+      this.derivedAccounts.set(accountIndex, account);
+    } catch (error) {
+      console.warn(`Failed to initialize account ${accountIndex} asynchronously:`, error);
+    }
   }
 
   /**
@@ -103,7 +120,58 @@ export class RadixMnemonicWallet implements RadixWallet {
    */
   static generateRandom(config: WalletConfig): RadixMnemonicWallet {
     const mnemonic = bip39.generateMnemonic(256); // 256 bits = 24 words
-    return new RadixMnemonicWallet(mnemonic, "", config);
+    const wallet = new RadixMnemonicWallet(mnemonic, "", config);
+    
+    // Auto-fund wallet if on Stokenet (non-blocking)
+    if (config.networkId === NetworkId.Stokenet) {
+      RadixMnemonicWallet.autoFundWalletAsync(wallet).catch(error => {
+        console.warn('⚠️ Auto-funding failed for new wallet:', error);
+      });
+    }
+    
+    return wallet;
+  }
+
+  /**
+   * Generate a new random wallet with proper async initialization
+   * Use this when you need the real address immediately
+   */
+  static async generateRandomAsync(config: WalletConfig): Promise<RadixMnemonicWallet> {
+    const mnemonic = bip39.generateMnemonic(256); // 256 bits = 24 words
+    const wallet = new RadixMnemonicWallet(mnemonic, "", config);
+    // Wait for proper address derivation
+    await wallet.waitForProperAddress();
+    
+    // Auto-fund wallet if on Stokenet
+    if (config.networkId === NetworkId.Stokenet) {
+      try {
+        console.log('🚀 Auto-funding newly created wallet...');
+        await RadixMnemonicWallet.autoFundWalletAsync(wallet);
+        console.log('✅ New wallet successfully funded with testnet XRD');
+      } catch (error) {
+        console.warn('⚠️ Auto-funding failed for new wallet:', error);
+        console.log('💡 Manual funding required. Visit: https://stokenet-dashboard.radixdlt.com/');
+      }
+    }
+    
+    return wallet;
+  }
+
+  /**
+   * Auto-fund wallet helper method
+   */
+  private static async autoFundWalletAsync(wallet: RadixMnemonicWallet): Promise<void> {
+    try {
+      // Dynamic import to avoid circular dependencies
+      const { FaucetHelper } = await import('../utils/FaucetHelper');
+      const { RadixNetwork } = await import('./RadixGatewayClient');
+      
+      const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+      await faucetHelper.autoFundNewWallet(wallet);
+    } catch (error) {
+      console.warn('Auto-funding failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -115,6 +183,43 @@ export class RadixMnemonicWallet implements RadixWallet {
     passphrase: string = ""
   ): RadixMnemonicWallet {
     return new RadixMnemonicWallet(mnemonic, passphrase, config);
+  }
+
+  /**
+   * Create wallet from existing mnemonic with proper async initialization
+   */
+  static async fromMnemonicAsync(
+    mnemonic: string,
+    config: WalletConfig,
+    passphrase: string = ""
+  ): Promise<RadixMnemonicWallet> {
+    const wallet = new RadixMnemonicWallet(mnemonic, passphrase, config);
+    await wallet.waitForProperAddress();
+    return wallet;
+  }
+
+  /**
+   * Wait for proper address to be derived
+   */
+  async waitForProperAddress(): Promise<void> {
+    // If already has a proper address, return immediately
+    if (this.currentAccount.address.startsWith('account_tdx_')) {
+      return;
+    }
+
+    // Wait for async initialization to complete
+    let attempts = 0;
+    const maxAttempts = 20; // 2 seconds max
+    
+    while (attempts < maxAttempts && !this.currentAccount.address.startsWith('account_tdx_')) {
+      await new Promise(resolve => setTimeout(resolve, 100)); // 100ms
+      attempts++;
+    }
+
+    // If still not ready, force sync derivation
+    if (!this.currentAccount.address.startsWith('account_tdx_')) {
+      this.currentAccount = await this.deriveAccountAsync(this.currentAccount.index);
+    }
   }
 
   /**
@@ -140,25 +245,83 @@ export class RadixMnemonicWallet implements RadixWallet {
   }
 
   /**
-   * Derive account synchronously for initial setup
+   * Derive account synchronously with temporary address, then update async
    */
   private deriveAccountSync(accountIndex: number): DerivedAccount {
+    if (this.derivedAccounts.has(accountIndex)) {
+      return this.derivedAccounts.get(accountIndex)!;
+    }
+
     try {
       const privateKeyHex = this.derivePrivateKey(accountIndex);
       const privateKey = new PrivateKey.Ed25519(privateKeyHex);
       const publicKey = privateKey.publicKey();
 
-      const accountAddress =
-        RadixEngineToolkit.Derive.virtualAccountAddressFromPublicKey(
-          publicKey,
-          this.networkId
-        );
+      // Create account with temporary address
+      const derivedAccount: DerivedAccount = {
+        index: accountIndex,
+        privateKey: Buffer.from(privateKey.bytes).toString("hex"),
+        publicKey: Buffer.from(publicKey.bytes).toString("hex"),
+        address: `account_pending_${accountIndex}`, // Temporary address
+        derivationPath: `m/44'/1022'/${accountIndex}'/0/0`,
+      };
+
+      this.derivedAccounts.set(accountIndex, derivedAccount);
+
+      // Async update the real address
+      this.updateAccountAddressAsync(accountIndex, publicKey);
+
+      return derivedAccount;
+    } catch (error) {
+      throw new Error(
+        `Failed to derive account at index ${accountIndex}: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Update account address asynchronously
+   */
+  private async updateAccountAddressAsync(accountIndex: number, publicKey: PublicKey): Promise<void> {
+    try {
+      const realAddress = await RadixEngineToolkit.Derive.virtualAccountAddressFromPublicKey(
+        publicKey,
+        this.networkId
+      );
+
+      const account = this.derivedAccounts.get(accountIndex);
+      if (account) {
+        account.address = realAddress;
+        // Update current account if it's the one being updated
+        if (this.currentAccount.index === accountIndex) {
+          this.currentAccount.address = realAddress;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to update address for account ${accountIndex}:`, error);
+    }
+  }
+
+  /**
+   * Derive account asynchronously for initial setup
+   */
+  private async deriveAccountAsync(accountIndex: number): Promise<DerivedAccount> {
+    try {
+      const privateKeyHex = this.derivePrivateKey(accountIndex);
+      const privateKey = new PrivateKey.Ed25519(privateKeyHex);
+      const publicKey = privateKey.publicKey();
+
+      // Properly await the async address derivation
+      const accountAddress = await RadixEngineToolkit.Derive.virtualAccountAddressFromPublicKey(
+        publicKey,
+        this.networkId
+      );
 
       const derivedAccount: DerivedAccount = {
         index: accountIndex,
         privateKey: Buffer.from(privateKey.bytes).toString("hex"), // Convert bytes to hex
         publicKey: Buffer.from(publicKey.bytes).toString("hex"),
-        address: accountAddress.toString(),
+        address: accountAddress,  // Now properly awaited
         derivationPath: `m/44'/1022'/${accountIndex}'/0/0`, // Radix coin type
       };
 
@@ -178,7 +341,7 @@ export class RadixMnemonicWallet implements RadixWallet {
     if (this.derivedAccounts.has(accountIndex)) {
       return this.derivedAccounts.get(accountIndex)!;
     }
-    return this.deriveAccountSync(accountIndex);
+    return this.deriveAccountAsync(accountIndex);
   }
 
   // RadixWallet interface implementation for Agent Kit compatibility
@@ -195,6 +358,14 @@ export class RadixMnemonicWallet implements RadixWallet {
    */
   getPublicKey(): string {
     return this.currentAccount.publicKey;
+  }
+
+  /**
+   * Get current account's private key as hex string
+   * Required for transaction signing
+   */
+  getPrivateKeyHex(): string {
+    return this.currentAccount.privateKey;
   }
 
   /**

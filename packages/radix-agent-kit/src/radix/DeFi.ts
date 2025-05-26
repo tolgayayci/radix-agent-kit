@@ -210,7 +210,7 @@ export class DeFi {
       } = options;
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -311,7 +311,7 @@ export class DeFi {
       }
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -408,7 +408,7 @@ export class DeFi {
       }
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -489,7 +489,7 @@ export class DeFi {
       } = options;
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -571,7 +571,7 @@ export class DeFi {
       } = options;
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -698,7 +698,7 @@ export class DeFi {
       const { ownerAddress, validatorAddress, amount } = options;
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -787,7 +787,7 @@ export class DeFi {
       }
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 
@@ -873,7 +873,7 @@ export class DeFi {
       }
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 

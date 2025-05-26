@@ -93,3 +93,5 @@ export * from "./utils";
 
 // Export agent functionality
 export * from "./agent";
+
+export { FaucetHelper } from './utils/FaucetHelper';

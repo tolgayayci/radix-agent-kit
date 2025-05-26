@@ -22,6 +22,11 @@ export class AddLiquidityTool extends RadixTool {
 
   async _call(input: string): Promise<string> {
     try {
+      // Validate input before parsing
+      if (!input || input.trim().length === 0) {
+        return "❌ Invalid input. Please provide pool address and amounts.\nFormat: 'poolAddress,amount1,amount2' or JSON: {'poolAddress': 'component_...', 'amount1': '100', 'amount2': '200'}";
+      }
+
       let poolAddress: string;
       let amount1: string;
       let amount2: string;
@@ -29,7 +34,7 @@ export class AddLiquidityTool extends RadixTool {
       // Parse input
       const parsed = this.parseInput(input);
 
-      if (parsed.parts) {
+      if (parsed.parts && parsed.parts.length > 0) {
         // Handle comma-separated format
         const parts = parsed.parts;
         if (parts.length < 3) {

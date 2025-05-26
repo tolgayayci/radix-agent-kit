@@ -79,7 +79,7 @@ export class Component {
       const { ownerAddress, componentAddress, method, args } = options;
 
       const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
-        ownerWallet.getPublicKey(),
+        ownerWallet.getPrivateKeyHex(),
         "Ed25519"
       );
 

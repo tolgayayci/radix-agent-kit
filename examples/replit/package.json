@@ -13,8 +13,9 @@
     "demo:staking": "node demos/staking-demo.js"
   },
   "dependencies": {
-    "radix-agent-kit": "^0.1.0",
-    "dotenv": "^16.3.1"
+    "axios": "^1.9.0",
+    "dotenv": "^16.3.1",
+    "radix-agent-kit": "file:../../packages/radix-agent-kit"
   },
   "keywords": [
     "radix",
@@ -25,4 +26,4 @@
   ],
   "author": "Radix Agent Kit",
   "license": "MIT"
-} 
+}

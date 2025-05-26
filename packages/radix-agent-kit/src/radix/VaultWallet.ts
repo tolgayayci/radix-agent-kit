@@ -77,6 +77,14 @@ export class VaultWallet implements RadixWallet {
   }
 
   /**
+   * Gets the private key associated with the wallet
+   * @returns Throws an error since private keys are stored in Vault
+   */
+  getPrivateKeyHex(): string {
+    throw new Error('VaultWallet.getPrivateKeyHex() not available - private keys are stored in Vault');
+  }
+
+  /**
    * Gets the Radix account address associated with the wallet
    * @returns The account address string
    */

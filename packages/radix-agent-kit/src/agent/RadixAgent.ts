@@ -1,15 +1,17 @@
-import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
+import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
 import { ChatOpenAI } from "@langchain/openai";
 import { BufferMemory } from "langchain/memory";
 import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
-import { RadixGatewayClient, RadixNetwork } from "../radix/RadixGatewayClient";
-import { RadixTransactionBuilder } from "../radix/RadixTransactionBuilder";
-import { RadixWallet } from "../radix/RadixWallet";
-import { RadixMnemonicWallet } from "../radix/MnemonicWallet";
-import { createDefaultRadixTools, RadixTool } from "./tools";
+import { DynamicStructuredTool } from "@langchain/core/tools";
+import { RadixGatewayClient, RadixNetwork } from '../radix/RadixGatewayClient';
+import { RadixTransactionBuilder } from '../radix/RadixTransactionBuilder';
+import { RadixWallet } from '../radix/RadixWallet';
+import { RadixMnemonicWallet } from '../radix/MnemonicWallet';
+import { FaucetHelper } from '../utils/FaucetHelper';
+import { createDefaultRadixTools } from "./tools";
 import { NetworkId } from "@radixdlt/radix-engine-toolkit";
 
 /**
@@ -29,11 +31,15 @@ export interface RadixAgentConfig {
   /** Whether to use memory for conversations */
   useMemory?: boolean;
   /** Custom tools to add to the agent */
-  customTools?: RadixTool[];
+  customTools?: DynamicStructuredTool[];
   /** Wallet to use (if not provided, will need to be set separately) */
   wallet?: RadixWallet;
   /** Mnemonic for creating a wallet */
   mnemonic?: string;
+  /** Maximum iterations for agent execution */
+  maxIterations?: number;
+  /** Whether to enable verbose logging */
+  verbose?: boolean;
 }
 
 /**
@@ -43,7 +49,7 @@ export class RadixAgent {
   private gatewayClient: RadixGatewayClient;
   private transactionBuilder: RadixTransactionBuilder;
   private wallet?: RadixWallet;
-  private tools: RadixTool[];
+  private tools: DynamicStructuredTool[];
   private llm: ChatOpenAI;
   private memory?: BufferMemory;
   private agent?: AgentExecutor;
@@ -65,11 +71,13 @@ export class RadixAgent {
       networkId: config.networkId,
     });
 
-    // Initialize LLM
+    // Initialize LLM with better configuration
     this.llm = new ChatOpenAI({
       openAIApiKey: config.openaiApiKey || process.env.OPENAI_API_KEY,
       modelName: config.model || "gpt-4",
       temperature: config.temperature || 0.1,
+      maxTokens: 2000,
+      timeout: 30000, // 30 second timeout
     });
 
     // Initialize memory if requested
@@ -118,32 +126,55 @@ export class RadixAgent {
       return;
     }
 
-    // Create default tools
+    try {
+      // Create default tools with error handling
     const defaultTools = createDefaultRadixTools(
       this.gatewayClient,
       this.transactionBuilder,
       this.wallet,
       this.networkId
-    );
+      ) as DynamicStructuredTool[];
 
     // Add custom tools if provided
     const customTools = this.config.customTools || [];
 
     this.tools = [...defaultTools, ...customTools];
+      
+      console.log(`✅ Initialized ${this.tools.length} tools for Radix Agent`);
+      this.tools.forEach(tool => {
+        console.log(`  - ${tool.name}: ${tool.description}`);
+      });
+    } catch (error) {
+      console.error("Error initializing tools:", error);
+      this.tools = [];
+    }
   }
 
   /**
-   * Initialize the LangChain agent
+   * Initialize the LangChain agent with improved configuration
    */
   private async initializeAgent(): Promise<void> {
     if (!this.wallet) {
       throw new Error("Wallet is required to initialize the agent");
     }
 
-    // Create system prompt
-    const systemPrompt = `You are a helpful AI assistant that can interact with the Radix DLT blockchain.
+    if (this.tools.length === 0) {
+      throw new Error("No tools available. Cannot initialize agent.");
+    }
 
-You have access to various tools that allow you to:
+    try {
+      // Create enhanced system prompt with better instructions
+      const systemPrompt = `You are a helpful AI assistant specialized in interacting with the Radix DLT blockchain.
+
+IMPORTANT INSTRUCTIONS:
+- You have access to ${this.tools.length} specialized tools for Radix blockchain operations
+- Your account address is: ${this.wallet.getAddress()}
+- Always use the appropriate tools to answer user questions about blockchain data
+- When a tool call fails, explain the error clearly and suggest alternatives
+- Be specific and accurate in your responses
+- If you need to perform blockchain operations, use the tools provided
+
+AVAILABLE CAPABILITIES:
 - Get account information and balances
 - Transfer tokens between accounts
 - Create new fungible tokens
@@ -151,14 +182,15 @@ You have access to various tools that allow you to:
 - Add liquidity to pools
 - Swap tokens in pools
 - Call methods on Radix components
+- Get current epoch information
 
-Your account address is: ${this.wallet.getAddress()}
+TOOL USAGE GUIDELINES:
+- Always try to use tools when users ask about blockchain data
+- If a tool fails, explain what went wrong and try alternative approaches
+- Provide clear explanations of what each operation does
+- Ask for confirmation before performing transactions that cost fees
 
-When users ask you to perform blockchain operations, use the appropriate tools to help them.
-Always be clear about what you're doing and provide transaction details when operations complete.
-
-If you need clarification about parameters or if something seems risky, ask the user for confirmation.
-Be helpful, accurate, and secure in your responses.`;
+Be helpful, accurate, and always use your tools to provide real blockchain data.`;
 
     const prompt = ChatPromptTemplate.fromMessages([
       ["system", systemPrompt],
@@ -167,21 +199,33 @@ Be helpful, accurate, and secure in your responses.`;
       new MessagesPlaceholder("agent_scratchpad"),
     ]);
 
-    // Create the agent
-    const agent = await createOpenAIFunctionsAgent({
+      // Create the agent with better error handling
+      const agent = await createOpenAIToolsAgent({
       llm: this.llm,
       tools: this.tools,
       prompt,
     });
 
-    // Create agent executor
+      // Create agent executor with improved configuration
     this.agent = new AgentExecutor({
       agent,
       tools: this.tools,
       memory: this.memory,
-      verbose: process.env.NODE_ENV === "development",
-      maxIterations: 10,
+        verbose: this.config.verbose ?? (process.env.NODE_ENV === "development"),
+        maxIterations: this.config.maxIterations || 15,
+        returnIntermediateSteps: true,
+        // Add custom error handling
+        handleParsingErrors: (error: Error) => {
+          console.error("Agent parsing error:", error);
+          return `I encountered a parsing error: ${error.message}. Let me try a different approach.`;
+        },
     });
+
+      console.log("✅ Agent initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize agent:", error);
+      throw new Error(`Agent initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -203,7 +247,46 @@ Be helpful, accurate, and secure in your responses.`;
       applicationName: this.config.applicationName || "RadixAgentKit",
     });
     this.setWallet(wallet);
+
+    // Check if wallet needs funding on Stokenet
+    if (this.config.networkId === RadixNetwork.Stokenet) {
+      this.checkAndFundWalletAsync(wallet).catch(error => {
+        console.warn('⚠️ Wallet funding check failed:', error);
+      });
+    }
+
     return wallet;
+  }
+
+  /**
+   * Auto-fund wallet asynchronously (non-blocking)
+   */
+  private async autoFundWalletAsync(wallet: RadixWallet): Promise<void> {
+    try {
+      const { FaucetHelper } = await import('../utils/FaucetHelper');
+      const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+      await faucetHelper.autoFundNewWallet(wallet);
+    } catch (error) {
+      console.warn('Auto-funding failed:', error);
+    }
+  }
+
+  /**
+   * Check if wallet has sufficient balance and fund if needed
+   */
+  private async checkAndFundWalletAsync(wallet: RadixWallet): Promise<void> {
+    try {
+      const { FaucetHelper } = await import('../utils/FaucetHelper');
+      const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+      
+      const balance = await faucetHelper.getXRDBalance(wallet);
+      if (balance < 50) { // If less than 50 XRD, try to fund
+        console.log(`💰 Wallet has low balance (${balance} XRD), attempting to fund...`);
+        await faucetHelper.autoFundNewWallet(wallet, 50);
+      }
+    } catch (error) {
+      console.warn('Wallet balance check failed:', error);
+    }
   }
 
   /**
@@ -216,13 +299,62 @@ Be helpful, accurate, and secure in your responses.`;
     });
     const mnemonic = (wallet as RadixMnemonicWallet).getMnemonic();
     this.setWallet(wallet);
+
+    // Auto-fund wallet if on Stokenet
+    if (this.config.networkId === RadixNetwork.Stokenet) {
+      this.autoFundWalletAsync(wallet).catch(error => {
+        console.warn('⚠️ Auto-funding failed for new wallet:', error);
+        console.log('💡 Manual funding required. Visit: https://stokenet-dashboard.radixdlt.com/');
+      });
+    }
+
     return { wallet, mnemonic };
   }
 
   /**
-   * Run the agent with user input
+   * Generate a new wallet with proper async address derivation
+   */
+  public async generateNewWalletAsync(): Promise<{ wallet: RadixWallet; mnemonic: string }> {
+    const wallet = await RadixMnemonicWallet.generateRandomAsync({
+      networkId: this.networkId,
+      applicationName: this.config.applicationName || "RadixAgentKit",
+    });
+    const mnemonic = (wallet as RadixMnemonicWallet).getMnemonic();
+    this.setWallet(wallet);
+
+    // Auto-fund wallet if on Stokenet
+    if (this.config.networkId === RadixNetwork.Stokenet) {
+      try {
+        console.log('🚀 Auto-funding newly created wallet...');
+        const { FaucetHelper } = await import('../utils/FaucetHelper');
+        const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+        const funded = await faucetHelper.autoFundNewWallet(wallet);
+        
+        if (funded) {
+          console.log('✅ New wallet successfully funded with testnet XRD');
+        } else {
+          console.warn('⚠️ Auto-funding failed - manual funding may be required');
+          console.log('💡 Get testnet XRD from: https://stokenet-dashboard.radixdlt.com/');
+        }
+      } catch (error) {
+        console.warn('⚠️ Auto-funding failed for new wallet:', error);
+        console.log('💡 Manual funding required. Visit: https://stokenet-dashboard.radixdlt.com/');
+      }
+    }
+
+    return { wallet, mnemonic };
+  }
+
+  /**
+   * Run the agent with user input - Enhanced with better error handling
    */
   public async run(input: string): Promise<string> {
+    if (!input || input.trim().length === 0) {
+      return "Please provide a question or request for me to help with.";
+    }
+
+    try {
+      // Initialize agent if not already done
     if (!this.agent) {
       await this.initializeAgent();
     }
@@ -231,19 +363,74 @@ Be helpful, accurate, and secure in your responses.`;
       throw new Error("Failed to initialize agent");
     }
 
-    try {
-      const result = await this.agent.invoke({
-        input: input,
-      });
+      // Prepare input parameters with proper structure
+      const inputParams: any = {
+        input: input.trim(),
+      };
 
-      return (
-        result.output || "I apologize, but I couldn't process your request."
-      );
+      // Handle chat history properly
+      if (this.memory) {
+        try {
+        const memoryVariables = await this.memory.loadMemoryVariables({});
+        inputParams.chat_history = memoryVariables.chat_history || [];
+        } catch (memoryError) {
+          console.warn("Memory loading failed, using empty history:", memoryError);
+          inputParams.chat_history = [];
+        }
+      } else {
+        inputParams.chat_history = [];
+      }
+
+      console.log(`🤖 Processing query: "${input}"`);
+      console.log(`📊 Available tools: ${this.tools.length}`);
+
+      // Execute the agent with timeout
+      const result = await Promise.race([
+        this.agent.invoke(inputParams),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Agent execution timeout")), 60000)
+        )
+      ]) as any;
+
+      // Extract and validate result
+      if (result && result.output) {
+        const output = result.output.trim();
+        if (output && output !== "I apologize, but I couldn't process your request.") {
+          console.log("✅ Agent execution successful");
+          return output;
+        }
+      }
+
+      // If we get here, the agent didn't provide a useful response
+      console.warn("Agent returned empty or generic response, checking intermediate steps");
+      
+      if (result.intermediateSteps && result.intermediateSteps.length > 0) {
+        const lastStep = result.intermediateSteps[result.intermediateSteps.length - 1];
+        if (lastStep.observation) {
+          return `Based on the available information: ${lastStep.observation}`;
+        }
+      }
+
+      return "I'm having trouble processing your request right now. Could you please rephrase your question or try asking about something specific like account balances or current epoch?";
+
     } catch (error) {
-      console.error("Error running agent:", error);
-      return `I encountered an error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      console.error("❌ Error running agent:", error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes("timeout")) {
+          return "The request took too long to process. Please try a simpler query or try again.";
+        }
+        if (error.message.includes("API")) {
+          return "There was an issue connecting to the Radix network. Please check your connection and try again.";
+        }
+        if (error.message.includes("tool")) {
+          return `There was an issue with one of my tools: ${error.message}. Please try rephrasing your request.`;
+        }
+        return `I encountered an error: ${error.message}. Please try rephrasing your request or ask for help with a specific task.`;
+      }
+      
+      return "I encountered an unexpected error. Please try again with a different request.";
     }
   }
 
@@ -267,14 +454,14 @@ Be helpful, accurate, and secure in your responses.`;
   /**
    * Get available tools
    */
-  public getTools(): RadixTool[] {
+  public getTools(): DynamicStructuredTool[] {
     return [...this.tools];
   }
 
   /**
    * Add a custom tool
    */
-  public addTool(tool: RadixTool): void {
+  public addTool(tool: DynamicStructuredTool): void {
     this.tools.push(tool);
     // Reset agent to reinitialize with new tools
     this.agent = undefined;
@@ -308,6 +495,13 @@ Be helpful, accurate, and secure in your responses.`;
    */
   public getWallet(): RadixWallet | undefined {
     return this.wallet;
+  }
+
+  /**
+   * Get the faucet helper for funding wallets
+   */
+  public getFaucetHelper(): FaucetHelper {
+    return new FaucetHelper(this.config.networkId);
   }
 }
 

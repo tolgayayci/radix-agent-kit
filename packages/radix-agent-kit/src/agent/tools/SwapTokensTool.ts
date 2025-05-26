@@ -22,6 +22,11 @@ export class SwapTokensTool extends RadixTool {
 
   async _call(input: string): Promise<string> {
     try {
+      // Validate input before parsing
+      if (!input || input.trim().length === 0) {
+        return "❌ Invalid input. Please provide pool and resource addresses with amount.\nFormat: 'poolAddress,fromResourceAddress,toResourceAddress,amountIn[,minAmountOut]' or JSON: {'poolAddress': 'component_...', 'fromResourceAddress': 'resource_...', 'toResourceAddress': 'resource_...', 'amountIn': '100', 'minAmountOut': '95'}";
+      }
+
       let poolAddress: string;
       let fromResourceAddress: string;
       let toResourceAddress: string;
@@ -31,7 +36,7 @@ export class SwapTokensTool extends RadixTool {
       // Parse input
       const parsed = this.parseInput(input);
 
-      if (parsed.parts) {
+      if (parsed.parts && parsed.parts.length > 0) {
         // Handle comma-separated format
         const parts = parsed.parts;
         if (parts.length < 4) {

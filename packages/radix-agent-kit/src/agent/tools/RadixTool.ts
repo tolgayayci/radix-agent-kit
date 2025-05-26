@@ -5,6 +5,7 @@ import { RadixWallet } from "../../radix/RadixWallet";
 import { Token } from "../../radix/Token";
 import { DeFi } from "../../radix/DeFi";
 import { Component } from "../../radix/Component";
+import { z } from "zod";
 
 /**
  * Base class for all Radix tools in the agent kit
@@ -131,6 +132,11 @@ export abstract class RadixTool extends Tool {
    * Parse tool input string into parameters
    */
   protected parseInput(input: string): Record<string, any> {
+    // Handle undefined, null, or empty input
+    if (!input || typeof input !== "string") {
+      return { input: input || "", parts: [] };
+    }
+
     // Handle JSON input
     if (input.trim().startsWith("{")) {
       try {
@@ -144,4 +150,7 @@ export abstract class RadixTool extends Tool {
     const parts = input.split(",").map((part) => part.trim());
     return { input: input, parts: parts };
   }
+
+  // This method must be implemented by subclasses
+  abstract _call(input: string): Promise<string>;
 }

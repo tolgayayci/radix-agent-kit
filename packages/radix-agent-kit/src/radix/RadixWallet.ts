@@ -24,7 +24,6 @@ export interface SignedTransaction {
   intentPayload: Uint8Array;
   signatures: SignatureWithPublicKey[];
 }
-
 /**
  * Interface for a Radix Wallet - aligned with Agent Kit requirements
  */

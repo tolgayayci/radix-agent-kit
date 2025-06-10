@@ -45,63 +45,93 @@ Please verify the account address is correct.`;
 
         const accountData = response.items[0];
         const fungibleResources = accountData.fungible_resources?.items || [];
+        const nonFungibleResources = accountData.non_fungible_resources?.items || [];
         
-        if (fungibleResources.length === 0) {
-          return `📭 Account ${accountAddress} has no token balances.
+        if (fungibleResources.length === 0 && nonFungibleResources.length === 0) {
+          return `📭 Account ${accountAddress} has no token balances or NFT collections.
 
-This account exists but currently holds no fungible tokens. To receive tokens, you can:
-• Transfer tokens from another account
+This account exists but currently holds no assets. To receive assets, you can:
+• Transfer tokens from another account  
 • Receive XRD from a faucet (on testnet)
-• Participate in token distributions`;
+• Participate in token distributions
+• Create your own tokens or NFT collections`;
         }
 
-        // Format balances with better presentation
-        const balanceStrings = fungibleResources.map((resource: any) => {
-          // Get amount from vaults.items[0].amount (correct path based on Gateway API)
-          const amount = resource.vaults?.items?.[0]?.amount ? parseFloat(resource.vaults.items[0].amount) : 0;
-          const formattedAmount = amount.toLocaleString(undefined, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 6
-          });
-          
-          let symbol = 'Unknown';
-          let name = '';
-          
-          // Try to get symbol and name from metadata
-          if (resource.explicit_metadata?.items) {
-            const symbolMeta = resource.explicit_metadata.items.find(
-              (item: any) => item.key === 'symbol'
-            );
-            const nameMeta = resource.explicit_metadata.items.find(
-              (item: any) => item.key === 'name'
-            );
+        let result = `💰 ${accountAddress === wallet.getAddress() ? 'Your account' : 'Account'} ${accountAddress} assets:\n\n`;
+
+        // Format fungible token balances
+        if (fungibleResources.length > 0) {
+          result += `🪙 FUNGIBLE TOKENS:\n`;
+          const balanceStrings = fungibleResources.map((resource: any) => {
+            // Get amount from vaults.items[0].amount (correct path based on Gateway API)
+            const amount = resource.vaults?.items?.[0]?.amount ? parseFloat(resource.vaults.items[0].amount) : 0;
+            const formattedAmount = amount.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 6
+            });
             
-            if (symbolMeta?.value?.typed?.type === 'String' && symbolMeta.value.typed.value) {
-              symbol = symbolMeta.value.typed.value;
+            let symbol = 'Unknown';
+            let name = '';
+            
+            // Try to get symbol and name from metadata
+            if (resource.explicit_metadata?.items) {
+              const symbolMeta = resource.explicit_metadata.items.find(
+                (item: any) => item.key === 'symbol'
+              );
+              const nameMeta = resource.explicit_metadata.items.find(
+                (item: any) => item.key === 'name'
+              );
+              
+              if (symbolMeta?.value?.typed?.type === 'String' && symbolMeta.value.typed.value) {
+                symbol = symbolMeta.value.typed.value;
+              }
+              if (nameMeta?.value?.typed?.type === 'String' && nameMeta.value.typed.value) {
+                name = nameMeta.value.typed.value;
+              }
             }
-            if (nameMeta?.value?.typed?.type === 'String' && nameMeta.value.typed.value) {
-              name = nameMeta.value.typed.value;
+            
+            // Special case for XRD
+            if (resource.resource_address === transactionBuilder.getXRDResourceAddress()) {
+              symbol = 'XRD';
+              name = 'Radix';
             }
-          }
-          
-          // Special case for XRD
-          if (resource.resource_address === transactionBuilder.getXRDResourceAddress()) {
-            symbol = 'XRD';
-            name = 'Radix';
-          }
-          
-          const displayName = name && name !== symbol ? `${name} (${symbol})` : symbol;
-          return `• ${formattedAmount} ${displayName}`;
-        });
+            
+            const displayName = name && name !== symbol ? `${name} (${symbol})` : symbol;
+            const resourceAddr = resource.resource_address.slice(0, 20) + '...';
+            return `  • ${formattedAmount} ${displayName} [${resourceAddr}]`;
+          });
+          result += balanceStrings.join('\n') + '\n\n';
+        }
 
-        const totalTokens = fungibleResources.length;
-        const accountType = accountAddress === wallet.getAddress() ? 'Your account' : 'Account';
+        // Format NFT collections
+        if (nonFungibleResources.length > 0) {
+          result += `🎨 NFT COLLECTIONS:\n`;
+          const nftStrings = nonFungibleResources.map((resource: any) => {
+            const nftCount = resource.vaults?.items?.[0]?.total_count || 0;
+            
+            let name = 'Unknown Collection';
+            
+            // Try to get name from metadata
+            if (resource.explicit_metadata?.items) {
+              const nameMeta = resource.explicit_metadata.items.find(
+                (item: any) => item.key === 'name'
+              );
+              
+              if (nameMeta?.value?.typed?.type === 'String' && nameMeta.value.typed.value) {
+                name = nameMeta.value.typed.value;
+              }
+            }
+            
+            const resourceAddr = resource.resource_address.slice(0, 20) + '...';
+            return `  • ${nftCount} NFT${nftCount !== 1 ? 's' : ''} in "${name}" [${resourceAddr}]`;
+          });
+          result += nftStrings.join('\n') + '\n\n';
+        }
 
-        return `💰 ${accountType} ${accountAddress} balances:
+        const totalAssets = fungibleResources.length + nonFungibleResources.length;
+        result += `📊 Total: ${fungibleResources.length} token type${fungibleResources.length !== 1 ? 's' : ''}, ${nonFungibleResources.length} NFT collection${nonFungibleResources.length !== 1 ? 's' : ''}`;
 
-${balanceStrings.join('\n')}
-
-📊 Total: ${totalTokens} different token${totalTokens !== 1 ? 's' : ''}`;
+        return result;
 
       } catch (error) {
         console.error("GetBalancesTool error:", error);

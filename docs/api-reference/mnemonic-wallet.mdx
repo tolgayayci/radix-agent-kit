@@ -1,0 +1,491 @@
+---
+title: "RadixMnemonicWallet"
+description: "24-word BIP-39 mnemonic wallet implementation"
+---
+
+# RadixMnemonicWallet
+
+The `RadixMnemonicWallet` class provides a secure, 24-word BIP-39 mnemonic-based wallet implementation with Ed25519 cryptography, designed for AI agent use cases.
+
+## Constructor
+
+```typescript
+constructor(mnemonic: string, passphrase?: string, config: WalletConfig)
+```
+
+Creates a new wallet instance from an existing mnemonic.
+
+### WalletConfig
+
+```typescript
+interface WalletConfig {
+  networkId: number;        // Network ID (1 = Mainnet, 2 = Stokenet)
+  applicationName?: string; // Application name for identification
+  accountIndex?: number;    // Account index to use (default: 0)
+}
+```
+
+**Example:**
+```typescript
+const wallet = new RadixMnemonicWallet(
+  "abandon abandon abandon ... art",
+  "", // Empty passphrase for Radix Wallet compatibility
+  {
+    networkId: 2, // Stokenet
+    applicationName: "MyApp",
+    accountIndex: 0
+  }
+);
+```
+
+## Static Factory Methods
+
+### generateRandom(config: WalletConfig): RadixMnemonicWallet
+
+Generate a new wallet with a random 24-word mnemonic.
+
+```typescript
+const wallet = RadixMnemonicWallet.generateRandom({
+  networkId: 2, // Stokenet
+  applicationName: "RadixAgentKit"
+});
+
+console.log("Address:", wallet.getAddress());
+console.log("Mnemonic:", wallet.getMnemonic());
+```
+
+**Features:**
+- Generates 256-bit (24-word) mnemonic
+- Auto-funds on Stokenet (async, non-blocking)
+- Immediate availability with sync address derivation
+
+### generateRandomAsync(config: WalletConfig): Promise\<RadixMnemonicWallet>
+
+Generate a new wallet with proper async address derivation.
+
+```typescript
+const wallet = await RadixMnemonicWallet.generateRandomAsync({
+  networkId: 2,
+  applicationName: "MyApp"
+});
+
+// Address is properly derived and ready
+console.log("Address:", wallet.getAddress()); // account_tdx_2_...
+```
+
+**Use this when:** You need the real address immediately for operations.
+
+### fromMnemonic(mnemonic: string, config: WalletConfig, passphrase?: string): RadixMnemonicWallet
+
+Create wallet from existing mnemonic.
+
+```typescript
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  process.env.RADIX_MNEMONIC!,
+  { networkId: 2 }
+);
+```
+
+### fromMnemonicAsync(mnemonic: string, config: WalletConfig, passphrase?: string): Promise\<RadixMnemonicWallet>
+
+Create wallet from existing mnemonic with proper async initialization.
+
+```typescript
+const wallet = await RadixMnemonicWallet.fromMnemonicAsync(
+  process.env.RADIX_MNEMONIC!,
+  { networkId: 2 }
+);
+```
+
+## Core Wallet Methods
+
+### getAddress(): string
+
+Get the current account's Radix address.
+
+```typescript
+const address = wallet.getAddress();
+console.log(address); // account_tdx_2_1c8atrq...
+```
+
+### getPublicKey(): string
+
+Get the current account's public key as hex string.
+
+```typescript
+const publicKey = wallet.getPublicKey();
+console.log(publicKey); // 32-byte hex string
+```
+
+### getPrivateKeyHex(): string
+
+Get the current account's private key as hex string.
+
+```typescript
+const privateKey = wallet.getPrivateKeyHex();
+// ⚠️ Keep this secure! Never log or expose
+```
+
+### getMnemonic(): string
+
+Get the wallet's mnemonic phrase.
+
+```typescript
+const mnemonic = wallet.getMnemonic();
+// ⚠️ Sensitive information - backup securely
+console.log("Backup:", mnemonic);
+```
+
+## Signing Methods
+
+### sign(data: Uint8Array): Promise\<string>
+
+Sign arbitrary data with the current account.
+
+```typescript
+const data = new TextEncoder().encode("Hello Radix");
+const signature = await wallet.sign(data);
+console.log("Signature:", signature);
+```
+
+### signTransaction(transactionIntent: any): Promise\<any>
+
+Sign a transaction intent (used by RadixTransactionBuilder).
+
+```typescript
+const signedTransaction = await wallet.signTransaction(transactionIntent);
+```
+
+### signWithAccount(accountIndex: number, data: Uint8Array): Promise\<string>
+
+Sign data with a specific account index.
+
+```typescript
+const signature = await wallet.signWithAccount(1, data);
+```
+
+## Account Management
+
+### getCurrentAccount(): DerivedAccount
+
+Get current account details.
+
+```typescript
+interface DerivedAccount {
+  index: number;
+  privateKey: string;
+  publicKey: string;
+  address: string;
+  derivationPath: string;
+}
+
+const account = wallet.getCurrentAccount();
+console.log("Current account:", account.index);
+console.log("Address:", account.address);
+```
+
+### switchToAccount(accountIndex: number): Promise\<DerivedAccount>
+
+Switch to a different account index.
+
+```typescript
+// Switch to account 1
+const newAccount = await wallet.switchToAccount(1);
+console.log("Switched to:", newAccount.address);
+
+// Now all operations use account 1
+const balance = await gateway.getAccountBalances(wallet.getAddress());
+```
+
+### deriveAccount(accountIndex: number): Promise\<DerivedAccount>
+
+Derive a specific account without switching to it.
+
+```typescript
+const account1 = await wallet.deriveAccount(1);
+const account2 = await wallet.deriveAccount(2);
+
+console.log("Account 1:", account1.address);
+console.log("Account 2:", account2.address);
+```
+
+### deriveMultipleAccounts(startIndex?: number, count?: number): Promise\<DerivedAccount[]\>
+
+Derive multiple accounts at once.
+
+```typescript
+// Derive accounts 0-4
+const accounts = await wallet.deriveMultipleAccounts(0, 5);
+
+accounts.forEach((account, i) => {
+  console.log(`Account ${i}:`, account.address);
+});
+```
+
+### getAllAccounts(): DerivedAccount\[\]
+
+Get all previously derived accounts.
+
+```typescript
+const accounts = wallet.getAllAccounts();
+console.log(`${accounts.length} accounts derived`);
+```
+
+## Utility Methods
+
+### canSignFor(address: string): boolean
+
+Check if wallet can sign for a specific address.
+
+```typescript
+const canSign = wallet.canSignFor("account_tdx_2_1c8atrq...");
+if (canSign) {
+  console.log("Wallet controls this address");
+}
+```
+
+### getNetworkInfo(): NetworkInfo
+
+Get wallet network configuration.
+
+```typescript
+interface NetworkInfo {
+  networkId: number;
+  applicationName: string;
+  currentAccountIndex: number;
+  totalAccounts: number;
+}
+
+const info = wallet.getNetworkInfo();
+console.log("Network:", info.networkId === 2 ? "Stokenet" : "Mainnet");
+console.log("Current account:", info.currentAccountIndex);
+console.log("Total accounts:", info.totalAccounts);
+```
+
+### exportPublicInfo(): PublicWalletInfo
+
+Export wallet information for debugging (excludes private keys).
+
+```typescript
+export interface PublicWalletInfo {
+  networkId: number;
+  applicationName: string;
+  accounts: Array\<{
+    index: number;
+    address: string;
+    publicKey: string;
+    derivationPath: string;
+  }>;
+}
+
+const publicInfo = wallet.exportPublicInfo();
+console.log("Wallet info:", JSON.stringify(publicInfo, null, 2));
+```
+
+### waitForProperAddress(): Promise\<void>
+
+Wait for proper address derivation to complete.
+
+```typescript
+// Useful when you need to ensure address is fully derived
+await wallet.waitForProperAddress();
+const address = wallet.getAddress(); // Now guaranteed to be real address
+```
+
+## Static Utility Methods
+
+### validateMnemonic(mnemonic: string): boolean
+
+Validate a mnemonic phrase.
+
+```typescript
+const isValid = RadixMnemonicWallet.validateMnemonic(userMnemonic);
+if (!isValid) {
+  throw new Error("Invalid mnemonic phrase");
+}
+```
+
+**Validates:**
+- BIP-39 checksum
+- 24-word requirement for Radix compatibility
+
+### generateMnemonic(): string
+
+Generate a random 24-word mnemonic.
+
+```typescript
+const mnemonic = RadixMnemonicWallet.generateMnemonic();
+console.log("New mnemonic:", mnemonic);
+```
+
+### getMnemonicStrength(mnemonic: string): number
+
+Get mnemonic strength in bits.
+
+```typescript
+const strength = RadixMnemonicWallet.getMnemonicStrength(mnemonic);
+console.log("Strength:", strength); // 256 for 24 words
+```
+
+## Factory Class: RadixWalletFactory
+
+Convenience factory for common wallet creation patterns.
+
+### createNew(config: WalletConfig): RadixMnemonicWallet
+
+Create a new random wallet.
+
+```typescript
+const wallet = RadixWalletFactory.createNew({
+  networkId: 2,
+  applicationName: "MyApp"
+});
+```
+
+### importFromMnemonic(mnemonic: string, config: WalletConfig, passphrase?: string): RadixMnemonicWallet
+
+Import wallet from mnemonic.
+
+```typescript
+const wallet = RadixWalletFactory.importFromMnemonic(
+  userMnemonic,
+  { networkId: 2 }
+);
+```
+
+### fromEnvironment(envVar?: string, config: WalletConfig): RadixMnemonicWallet
+
+Create wallet from environment variable.
+
+```typescript
+// Uses RADIX_MNEMONIC environment variable
+const wallet = RadixWalletFactory.fromEnvironment(undefined, {
+  networkId: 2
+});
+
+// Or specify custom environment variable
+const wallet = RadixWalletFactory.fromEnvironment("MY_WALLET_MNEMONIC", {
+  networkId: 2
+});
+```
+
+## Usage Examples
+
+### Basic Wallet Creation
+
+```typescript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+// Create new wallet
+const wallet = RadixMnemonicWallet.generateRandom({
+  networkId: 2, // Stokenet
+  applicationName: "MyRadixApp"
+});
+
+console.log("Address:", wallet.getAddress());
+console.log("Mnemonic:", wallet.getMnemonic()); // Backup securely!
+```
+
+### Import Existing Wallet
+
+```typescript
+// From mnemonic phrase
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  "abandon abandon abandon ... art",
+  { networkId: 2 }
+);
+
+// From environment
+const wallet = RadixWalletFactory.fromEnvironment("RADIX_MNEMONIC", {
+  networkId: 2
+});
+```
+
+### Multi-Account Usage
+
+```typescript
+// Derive multiple accounts
+const accounts = await wallet.deriveMultipleAccounts(0, 3);
+
+// Use different accounts for different purposes
+await wallet.switchToAccount(0); // Main account
+const mainAddress = wallet.getAddress();
+
+await wallet.switchToAccount(1); // Trading account  
+const tradingAddress = wallet.getAddress();
+
+await wallet.switchToAccount(2); // Savings account
+const savingsAddress = wallet.getAddress();
+```
+
+### With RadixAgent
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+// Create wallet
+const wallet = await RadixMnemonicWallet.generateRandomAsync({
+  networkId: 2
+});
+
+// Use with agent
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  wallet: wallet
+});
+
+await agent.run("What's my balance?");
+```
+
+## Security Best Practices
+
+1. **Secure Mnemonic Storage**: Never log or expose mnemonic phrases
+2. **Environment Variables**: Use environment variables for production
+3. **24-Word Requirement**: Always use 24-word mnemonics for Radix compatibility
+4. **Network Separation**: Use different wallets for mainnet and testnet
+5. **Account Isolation**: Use different account indices for different purposes
+
+## Error Handling
+
+```typescript
+try {
+  const wallet = RadixMnemonicWallet.fromMnemonic(userInput, config);
+  const address = wallet.getAddress();
+} catch (error) {
+  if (error.message.includes("Invalid mnemonic")) {
+    console.error("Please provide a valid 24-word mnemonic");
+  } else if (error.message.includes("24-word mnemonic")) {
+    console.error("Radix Agent Kit requires 24-word mnemonic phrases");
+  } else {
+    console.error("Wallet creation failed:", error.message);
+  }
+}
+```
+
+## Integration with Other Components
+
+### With Gateway Client
+
+```typescript
+import { RadixGatewayClient } from "radix-agent-kit";
+
+const gateway = new RadixGatewayClient({ networkId: 2 });
+const balances = await gateway.getAccountBalances(wallet.getAddress());
+```
+
+### With Transaction Builder
+
+```typescript
+import { RadixTransactionBuilder } from "radix-agent-kit";
+
+const builder = new RadixTransactionBuilder({ networkId: 2 });
+const manifest = builder.createTransferManifest({
+  fromAccount: wallet.getAddress(),
+  toAccount: targetAddress,
+  resourceAddress: "resource_tdx_2_1tknxxxxxxxxxradixdxrdxxxxxxxxx009923554798xxxxxxxxxdxrdxt",
+  amount: "100"
+});
+
+const signed = await builder.signAndSubmitTransaction(manifest, wallet);
+``` 

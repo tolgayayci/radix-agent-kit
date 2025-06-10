@@ -1,0 +1,525 @@
+---
+title: "KeyStorage"
+description: "Secure key management and storage"
+---
+
+# KeyStorage
+
+The `KeyStorage` class provides secure key management and storage capabilities for Radix Agent Kit. It handles encryption, decryption, and secure storage of sensitive cryptographic material.
+
+## Constructor
+
+```typescript
+constructor(config: KeyStorageConfig)
+```
+
+Creates a new KeyStorage instance with specified security configuration.
+
+### KeyStorageConfig
+
+```typescript
+interface KeyStorageConfig {
+  storageType: 'file' | 'memory' | 'vault';
+  encryptionKey?: string;
+  storagePath?: string;
+  compressionLevel?: number;
+  backupEnabled?: boolean;
+}
+```
+
+**Example:**
+```typescript
+import { KeyStorage } from "radix-agent-kit";
+
+const keyStorage = new KeyStorage({
+  storageType: 'file',
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  storagePath: './secure-keys',
+  compressionLevel: 9,
+  backupEnabled: true
+});
+```
+
+## Core Storage Operations
+
+### store(keyId: string, keyData: KeyData): Promise\<void>
+
+Store encrypted key data securely.
+
+```typescript
+interface KeyData {
+  privateKey: string;
+  publicKey: string;
+  address: string;
+  metadata?: Record<string, any>;
+  createdAt: Date;
+  lastUsed?: Date;
+}
+
+await keyStorage.store('main-wallet', {
+  privateKey: privateKeyHex,
+  publicKey: publicKeyHex,
+  address: accountAddress,
+  metadata: {
+    name: 'Main Wallet',
+    purpose: 'Primary trading account'
+  },
+  createdAt: new Date()
+});
+
+console.log("✅ Key stored securely");
+```
+
+### retrieve(keyId: string): Promise\<KeyData>
+
+Retrieve and decrypt stored key data.
+
+```typescript
+const keyData = await keyStorage.retrieve('main-wallet');
+
+console.log("Address:", keyData.address);
+console.log("Created:", keyData.createdAt);
+console.log("Metadata:", keyData.metadata);
+// Private key is decrypted automatically
+```
+
+### exists(keyId: string): Promise\<boolean>
+
+Check if a key exists in storage.
+
+```typescript
+const hasKey = await keyStorage.exists('main-wallet');
+if (hasKey) {
+  console.log("Key found in storage");
+} else {
+  console.log("Key not found");
+}
+```
+
+### delete(keyId: string): Promise\<void>
+
+Securely delete a stored key.
+
+```typescript
+await keyStorage.delete('old-wallet');
+console.log("✅ Key securely deleted");
+```
+
+## Key Management
+
+### listKeys(): Promise\<KeyInfo[]\>
+
+List all stored keys (without sensitive data).
+
+```typescript
+interface KeyInfo {
+  keyId: string;
+  address: string;
+  createdAt: Date;
+  lastUsed?: Date;
+  metadata?: Record<string, any>;
+}
+
+const keys = await keyStorage.listKeys();
+
+keys.forEach(key => {
+  console.log(`${key.keyId}: ${key.address}`);
+  console.log(`Created: ${key.createdAt}`);
+  console.log(`Last used: ${key.lastUsed || 'Never'}`);
+});
+```
+
+### updateMetadata(keyId: string, metadata: Record\<string, any>): Promise\<void>
+
+Update key metadata without affecting the key itself.
+
+```typescript
+await keyStorage.updateMetadata('main-wallet', {
+  name: 'Updated Main Wallet',
+  purpose: 'Primary trading and staking',
+  lastBackup: new Date()
+});
+```
+
+### updateLastUsed(keyId: string): Promise\<void>
+
+Update the last used timestamp for a key.
+
+```typescript
+await keyStorage.updateLastUsed('main-wallet');
+```
+
+## Security Features
+
+### changeEncryptionKey(oldKey: string, newKey: string): Promise\<void>
+
+Change the encryption key for all stored keys.
+
+```typescript
+await keyStorage.changeEncryptionKey(
+  process.env.OLD_ENCRYPTION_KEY!,
+  process.env.NEW_ENCRYPTION_KEY!
+);
+
+console.log("✅ Encryption key updated for all stored keys");
+```
+
+### backup(backupPath: string): Promise\<void>
+
+Create an encrypted backup of all keys.
+
+```typescript
+await keyStorage.backup('./backups/keys-backup-2024.enc');
+console.log("✅ Backup created successfully");
+```
+
+### restore(backupPath: string, encryptionKey: string): Promise\<void>
+
+Restore keys from an encrypted backup.
+
+```typescript
+await keyStorage.restore('./backups/keys-backup-2024.enc', backupEncryptionKey);
+console.log("✅ Keys restored from backup");
+```
+
+### verify(): Promise\<VerificationResult>
+
+Verify the integrity of stored keys.
+
+```typescript
+interface VerificationResult {
+  totalKeys: number;
+  validKeys: number;
+  corruptedKeys: string[];
+  missingKeys: string[];
+}
+
+const result = await keyStorage.verify();
+
+console.log(`Verified ${result.validKeys}/${result.totalKeys} keys`);
+if (result.corruptedKeys.length > 0) {
+  console.warn("Corrupted keys:", result.corruptedKeys);
+}
+```
+
+## Advanced Operations
+
+### export(keyId: string, format: 'json' | 'pem' | 'hex'): Promise\<string>
+
+Export a key in specified format.
+
+```typescript
+// Export as JSON
+const jsonExport = await keyStorage.export('main-wallet', 'json');
+
+// Export as hex
+const hexExport = await keyStorage.export('main-wallet', 'hex');
+
+console.log("Key exported successfully");
+```
+
+### import(keyData: string, format: 'json' | 'pem' | 'hex', keyId: string): Promise\<void>
+
+Import a key from external format.
+
+```typescript
+await keyStorage.import(externalKeyData, 'json', 'imported-wallet');
+console.log("✅ Key imported successfully");
+```
+
+### generateKey(keyId: string, options?: GenerateKeyOptions): Promise\<KeyData>
+
+Generate and store a new key.
+
+```typescript
+interface GenerateKeyOptions {
+  keyType: 'Ed25519' | 'Secp256k1';
+  networkId: number;
+  metadata?: Record<string, any>;
+}
+
+const newKey = await keyStorage.generateKey('new-wallet', {
+  keyType: 'Ed25519',
+  networkId: 2, // Stokenet
+  metadata: {
+    name: 'Generated Wallet',
+    purpose: 'Testing'
+  }
+});
+
+console.log("New wallet address:", newKey.address);
+```
+
+## Storage Types
+
+### File Storage
+
+Secure file-based storage with encryption.
+
+```typescript
+const fileStorage = new KeyStorage({
+  storageType: 'file',
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  storagePath: './secure-keys',
+  backupEnabled: true
+});
+```
+
+**Features:**
+- AES-256 encryption
+- Automatic file permissions
+- Backup support
+- Cross-platform compatibility
+
+### Memory Storage
+
+In-memory storage for temporary use.
+
+```typescript
+const memoryStorage = new KeyStorage({
+  storageType: 'memory',
+  encryptionKey: process.env.ENCRYPTION_KEY
+});
+```
+
+**Features:**
+- No disk persistence
+- Fast access
+- Automatic cleanup on exit
+- Suitable for testing
+
+### Vault Storage
+
+Hardware security module integration.
+
+```typescript
+const vaultStorage = new KeyStorage({
+  storageType: 'vault',
+  encryptionKey: process.env.VAULT_KEY,
+  storagePath: '/secure/vault/path'
+});
+```
+
+**Features:**
+- Hardware security module support
+- Maximum security
+- Audit logging
+- Enterprise-grade protection
+
+## Usage Examples
+
+### Basic Key Management
+
+```typescript
+import { KeyStorage } from "radix-agent-kit";
+
+// Initialize secure storage
+const storage = new KeyStorage({
+  storageType: 'file',
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  storagePath: './wallet-keys'
+});
+
+// Store a new wallet
+await storage.store('trading-wallet', {
+  privateKey: privateKeyHex,
+  publicKey: publicKeyHex,
+  address: accountAddress,
+  metadata: {
+    name: 'Trading Wallet',
+    purpose: 'DeFi operations',
+    riskLevel: 'medium'
+  },
+  createdAt: new Date()
+});
+
+// Retrieve when needed
+const keyData = await storage.retrieve('trading-wallet');
+console.log("Wallet address:", keyData.address);
+```
+
+### Multi-Wallet Management
+
+```typescript
+async function manageMultipleWallets() {
+  const storage = new KeyStorage({
+    storageType: 'file',
+    encryptionKey: process.env.ENCRYPTION_KEY,
+    storagePath: './wallets'
+  });
+  
+  // Generate multiple wallets
+  const walletTypes = ['trading', 'staking', 'treasury', 'development'];
+  
+  for (const type of walletTypes) {
+    const keyData = await storage.generateKey(`${type}-wallet`, {
+      keyType: 'Ed25519',
+      networkId: 2,
+      metadata: {
+        name: `${type.charAt(0).toUpperCase() + type.slice(1)} Wallet`,
+        purpose: `${type} operations`,
+        createdBy: 'automated-setup'
+      }
+    });
+    
+    console.log(`${type} wallet: ${keyData.address}`);
+  }
+  
+  // List all wallets
+  const allKeys = await storage.listKeys();
+  console.log(`Total wallets: ${allKeys.length}`);
+}
+
+await manageMultipleWallets();
+```
+
+### Backup and Recovery
+
+```typescript
+async function backupAndRestore() {
+  const storage = new KeyStorage({
+    storageType: 'file',
+    encryptionKey: process.env.ENCRYPTION_KEY,
+    storagePath: './production-keys',
+    backupEnabled: true
+  });
+  
+  // Create backup
+  const backupPath = `./backups/keys-${Date.now()}.enc`;
+  await storage.backup(backupPath);
+  console.log("✅ Backup created:", backupPath);
+  
+  // Verify backup integrity
+  const verification = await storage.verify();
+  console.log("Verification result:", verification);
+  
+  // In case of disaster recovery
+  if (verification.corruptedKeys.length > 0) {
+    console.log("🔄 Restoring from backup...");
+    await storage.restore(backupPath, process.env.ENCRYPTION_KEY!);
+    console.log("✅ Recovery completed");
+  }
+}
+```
+
+### Security Rotation
+
+```typescript
+async function rotateSecurityKeys() {
+  const storage = new KeyStorage({
+    storageType: 'file',
+    encryptionKey: process.env.CURRENT_ENCRYPTION_KEY,
+    storagePath: './secure-keys'
+  });
+  
+  // Create backup before rotation
+  await storage.backup('./backups/pre-rotation-backup.enc');
+  
+  // Rotate encryption key
+  await storage.changeEncryptionKey(
+    process.env.CURRENT_ENCRYPTION_KEY!,
+    process.env.NEW_ENCRYPTION_KEY!
+  );
+  
+  // Verify all keys after rotation
+  const verification = await storage.verify();
+  
+  if (verification.validKeys === verification.totalKeys) {
+    console.log("✅ Security rotation completed successfully");
+  } else {
+    console.error("❌ Security rotation failed - restore from backup");
+  }
+}
+```
+
+### Integration with Wallets
+
+```typescript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+async function integrateWithWallet() {
+  const storage = new KeyStorage({
+    storageType: 'file',
+    encryptionKey: process.env.ENCRYPTION_KEY,
+    storagePath: './wallet-storage'
+  });
+  
+  // Create wallet and store securely
+  const wallet = RadixMnemonicWallet.generateRandom({ networkId: 2 });
+  
+  await storage.store('main-wallet', {
+    privateKey: wallet.getPrivateKeyHex(),
+    publicKey: wallet.getPublicKey(),
+    address: wallet.getAddress(),
+    metadata: {
+      mnemonic: wallet.getMnemonic(), // Store mnemonic securely
+      derivationPath: "m/44'/1022'/0'/0/0",
+      networkId: 2
+    },
+    createdAt: new Date()
+  });
+  
+  // Later, recreate wallet from storage
+  const storedKey = await storage.retrieve('main-wallet');
+  const restoredWallet = RadixMnemonicWallet.fromMnemonic(
+    storedKey.metadata!.mnemonic,
+    { networkId: 2 }
+  );
+  
+  console.log("Original address:", wallet.getAddress());
+  console.log("Restored address:", restoredWallet.getAddress());
+  console.log("Addresses match:", wallet.getAddress() === restoredWallet.getAddress());
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const keyData = await keyStorage.retrieve('non-existent-key');
+} catch (error) {
+  if (error.message.includes('Key not found')) {
+    console.error("Key does not exist in storage");
+  } else if (error.message.includes('Decryption failed')) {
+    console.error("Invalid encryption key or corrupted data");
+  } else if (error.message.includes('Permission denied')) {
+    console.error("Insufficient file system permissions");
+  } else if (error.message.includes('Storage unavailable')) {
+    console.error("Storage backend is not accessible");
+  } else {
+    console.error("Key storage operation failed:", error.message);
+  }
+}
+```
+
+## Security Best Practices
+
+1. **Strong Encryption**: Use cryptographically secure encryption keys (32+ bytes)
+2. **Key Rotation**: Regularly rotate encryption keys
+3. **Backup Strategy**: Maintain secure, encrypted backups
+4. **Access Control**: Implement proper file system permissions
+5. **Audit Logging**: Log all key access operations
+6. **Verification**: Regularly verify key integrity
+7. **Secure Deletion**: Use secure deletion methods for sensitive data
+
+## Performance Considerations
+
+- **Caching**: KeyStorage implements intelligent caching for frequently accessed keys
+- **Compression**: Optional compression reduces storage size
+- **Batch Operations**: Use batch operations for multiple keys
+- **Memory Management**: Automatic cleanup of decrypted data
+
+## Integration Notes
+
+- **RadixAgent**: Automatically uses KeyStorage for wallet management
+- **RadixMnemonicWallet**: Can be integrated with KeyStorage for persistence
+- **VaultWallet**: Uses KeyStorage internally for secure key management
+- **Cross-Platform**: Works on Windows, macOS, and Linux
+
+<Warning>
+**Security**: KeyStorage handles sensitive cryptographic material. Always use strong encryption keys and secure storage locations in production.
+</Warning>
+
+<Note>
+**Backup**: Regular backups are essential for key recovery. Store backups in secure, separate locations from primary storage.
+</Note> 

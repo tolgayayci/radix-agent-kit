@@ -2,12 +2,12 @@ import 'dotenv/config';
 import { RadixAgent, RadixNetwork } from 'radix-agent-kit';
 
 /**
- * Simple DeFi Operations Demo
- * Tests the 4 core DeFi functions through natural language
+ * Simple Staking Operations Demo
+ * Tests ONLY the 3 core staking functions: stake, unstake, claim
  */
 
 async function main() {
-  console.log('🏊‍♂️ Simple DeFi Demo - Testing Core Functions\n');
+  console.log('🪙 Simple Staking Demo - Testing 3 Core Functions\n');
 
   if (!process.env.OPENAI_API_KEY) {
     console.error('❌ Missing OPENAI_API_KEY');
@@ -21,49 +21,52 @@ async function main() {
     const agent = new RadixAgent({
       networkId: RadixNetwork.Stokenet,
       openaiApiKey: process.env.OPENAI_API_KEY,
-      applicationName: 'SimpleDeFiDemo',
+      applicationName: 'SimpleStakingDemo',
       verbose: false
     });
 
     await agent.initialize();
     
+    // Get wallet info
     const agentInfo = agent.getInfo();
     const walletAddress = agentInfo?.walletAddress;
     
     if (walletAddress) {
       console.log(`📍 Wallet: ${walletAddress}`);
-      console.log(`🔗 Dashboard: https://stokenet-dashboard.radixdlt.com/account/${walletAddress}\n`);
+      console.log(`🔗 Dashboard: https://stokenet-dashboard.radixdlt.com/account/${walletAddress}/staking\n`);
     }
+
+    const VALIDATOR = 'validator_tdx_2_1sdx3u8mhd3yt537jy5g3psaypmlx0dk2x78efev2qw8kl7a7c5c48y';
 
     // 1. Fund wallet
     console.log('💰 Funding wallet...');
     const fundResult = await agent.run('Fund my wallet with testnet XRD');
     console.log('Result:', fundResult.slice(0, 100) + '...\n');
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // 2. Create tokens for pool
-    console.log('🪙 Creating tokens...');
-    const tokenAResult = await agent.run('Create a fungible token called "DeFi Token A" with symbol "DEFIA" and 1000000 initial supply');
-    console.log('Token A:', tokenAResult.slice(0, 100) + '...\n');
+    // 2. Stake XRD
+    console.log('🎯 TEST 1: Stake XRD');
+    const stakeResult = await agent.run(`I want to stake XRD. Please stake 20 XRD with validator ${VALIDATOR}`);
+    console.log('Result:', stakeResult.slice(0, 100) + '...\n');
     
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    const tokenBResult = await agent.run('Create a fungible token called "DeFi Token B" with symbol "DEFIB" and 2000000 initial supply');
-    console.log('Token B:', tokenBResult.slice(0, 100) + '...\n');
-
+    // Wait for transaction
     await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // 3. Check what DeFi operations are available
-    console.log('🔧 Checking DeFi capabilities...');
-    const defiCapabilities = await agent.run('What DeFi operations can you help me with?');
-    console.log('DeFi tools:', defiCapabilities.slice(0, 200) + '...\n');
+    // 3. Unstake XRD
+    console.log('🎯 TEST 2: Unstake XRD');
+    const unstakeResult = await agent.run(`I want to unstake XRD. Please unstake 1 stake unit from validator ${VALIDATOR}`);
+    console.log('Result:', unstakeResult.slice(0, 100) + '...\n');
+    
+    // Wait for transaction
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-    // 4. Test pool creation (will fail without proper package, but shows the function exists)
-    console.log('🏊‍♂️ Testing pool creation...');
-    const poolResult = await agent.run('Create a liquidity pool with my DEFIA and DEFIB tokens');
-    console.log('Pool result:', poolResult.slice(0, 150) + '...\n');
-
+    // 4. Claim XRD
+    console.log('🎯 TEST 3: Claim XRD');
+    const claimResult = await agent.run(`I want to claim XRD rewards. Please claim rewards from validator ${VALIDATOR}`);
+    console.log('Result:', claimResult.slice(0, 100) + '...\n');
+    
+    if (walletAddress) {
+      console.log(`\n🔗 Verify on dashboard: https://stokenet-dashboard.radixdlt.com/account/${walletAddress}/staking`);
+    }
 
   } catch (error) {
     console.error('❌ Error:', error.message);

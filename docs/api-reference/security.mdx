@@ -1,0 +1,351 @@
+---
+title: "TransactionSecurity"
+description: "Transaction validation and security features"
+---
+
+# TransactionSecurity
+
+The `TransactionSecurity` class provides comprehensive transaction validation and rate limiting for secure blockchain operations. It's designed to protect AI agents and applications from malicious or excessive transactions.
+
+## Constructor
+
+```typescript
+constructor(
+  validationOptions: TransactionValidationOptions = {},
+  rateLimitOptions?: RateLimitOptions
+)
+```
+
+Creates a new TransactionSecurity instance with specified validation and rate limiting rules.
+
+### TransactionValidationOptions
+
+```typescript
+interface TransactionValidationOptions {
+  maxAmount?: number;                    // Maximum transaction amount (in XRD)
+  allowedDestinations?: string[];        // Whitelist of allowed destination addresses
+  forbiddenDestinations?: string[];      // Blacklist of forbidden destination addresses
+  allowResourceCreation?: boolean;       // Whether to allow resource creation
+  allowComponentCalls?: boolean;         // Whether to allow component calls
+  maxActionsPerTransaction?: number;     // Maximum number of actions in a single transaction
+}
+```
+
+### RateLimitOptions
+
+```typescript
+interface RateLimitOptions {
+  maxTransactions: number;               // Maximum number of transactions per time window
+  timeWindowMs: number;                  // Time window in milliseconds
+  throwOnLimit?: boolean;                // Whether to throw error when rate limit is exceeded
+}
+```
+
+**Example:**
+```typescript
+import { TransactionSecurity } from "radix-agent-kit";
+
+const security = new TransactionSecurity(
+  {
+    maxAmount: 1000,                     // Max 1000 XRD per transaction
+    allowedDestinations: [               // Only allow specific addresses
+      "account_tdx_2_1c8atrq...",
+      "account_tdx_2_1c9xyz..."
+    ],
+    forbiddenDestinations: [             // Block suspicious addresses
+      "account_tdx_2_1cmalicious..."
+    ],
+    allowResourceCreation: false,        // Disable token creation
+    allowComponentCalls: true,           // Allow smart contract calls
+    maxActionsPerTransaction: 5          // Max 5 actions per transaction
+  },
+  {
+    maxTransactions: 10,                 // Max 10 transactions
+    timeWindowMs: 60000,                 // Per minute
+    throwOnLimit: false                  // Return false instead of throwing
+  }
+);
+```
+
+## Core Methods
+
+### validateTransaction(transaction: SignableTransactionIntent, metadata: TransactionMetadata): ValidationResult
+
+Validates a transaction against configured security rules.
+
+```typescript
+interface TransactionMetadata {
+  totalAmount?: number;                  // Total XRD amount in transaction
+  destinations?: string[];               // Destination addresses
+  hasResourceCreation?: boolean;         // Whether transaction creates resources
+  hasComponentCalls?: boolean;           // Whether transaction calls components
+  actionCount?: number;                  // Number of actions in transaction
+}
+
+interface ValidationResult {
+  valid: boolean;                        // Whether transaction is valid
+  reason?: string;                       // Reason for validation failure
+}
+```
+
+**Example:**
+```typescript
+const transaction = {
+  intentHash: "txid_...",
+  payloadBytes: new Uint8Array([...])
+};
+
+const metadata = {
+  totalAmount: 100,
+  destinations: ["account_tdx_2_1c8atrq..."],
+  hasResourceCreation: false,
+  hasComponentCalls: false,
+  actionCount: 2
+};
+
+const result = security.validateTransaction(transaction, metadata);
+
+if (result.valid) {
+  console.log("✅ Transaction validation passed");
+} else {
+  console.log("❌ Transaction rejected:", result.reason);
+}
+```
+
+### checkRateLimit(): boolean
+
+Checks if a new transaction would exceed configured rate limits.
+
+```typescript
+const canProceed = security.checkRateLimit();
+
+if (canProceed) {
+  console.log("✅ Rate limit check passed");
+  // Proceed with transaction
+} else {
+  console.log("⚠️ Rate limit exceeded, please wait");
+}
+```
+
+**Features:**
+- Tracks transaction timestamps in memory
+- Automatically cleans up old entries
+- Can throw errors or return false based on configuration
+- Sliding window rate limiting
+
+### static createDefault(): TransactionSecurity
+
+Creates a security manager with sensible defaults for AI agents.
+
+```typescript
+const security = TransactionSecurity.createDefault();
+
+// Default configuration:
+// - maxAmount: 100 XRD
+// - allowResourceCreation: true
+// - allowComponentCalls: true
+// - maxActionsPerTransaction: 5
+// - maxTransactions: 10 per minute
+// - throwOnLimit: false
+```
+
+**Use cases:**
+- Quick setup for development
+- Standard security for AI agents
+- Conservative defaults for production
+
+## Validation Rules
+
+### Amount Validation
+
+Prevents transactions exceeding specified XRD limits:
+
+```typescript
+const security = new TransactionSecurity({
+  maxAmount: 500  // Block transactions > 500 XRD
+});
+
+// This will fail validation
+const result = security.validateTransaction(transaction, {
+  totalAmount: 1000
+});
+console.log(result.reason); // "Transaction amount 1000 exceeds maximum allowed 500"
+```
+
+### Destination Control
+
+Control which addresses can receive funds:
+
+```typescript
+// Whitelist approach - only allow specific addresses
+const security = new TransactionSecurity({
+  allowedDestinations: [
+    "account_tdx_2_1c8atrq...",  // Treasury account
+    "account_tdx_2_1c9xyz..."   // Trading account
+  ]
+});
+
+// Blacklist approach - block suspicious addresses
+const security2 = new TransactionSecurity({
+  forbiddenDestinations: [
+    "account_tdx_2_1cmalicious...",  // Known bad actor
+    "account_tdx_2_1cscam..."       // Reported scam address
+  ]
+});
+```
+
+### Feature Restrictions
+
+Control what types of operations are allowed:
+
+```typescript
+// Restrict to basic transfers only
+const transferOnlySecurity = new TransactionSecurity({
+  allowResourceCreation: false,    // No creating tokens/NFTs
+  allowComponentCalls: false,      // No smart contract calls
+  maxActionsPerTransaction: 3      // Simple transactions only
+});
+
+// Allow advanced operations
+const fullSecurity = new TransactionSecurity({
+  allowResourceCreation: true,     // Can create tokens
+  allowComponentCalls: true,       // Can call DeFi protocols
+  maxActionsPerTransaction: 10     // Complex transactions allowed
+});
+```
+
+## Usage Examples
+
+### AI Agent Protection
+
+Protect AI agents from making dangerous transactions:
+
+```typescript
+// Conservative settings for AI agents
+const aiSecurity = new TransactionSecurity(
+  {
+    maxAmount: 50,                    // Limit to 50 XRD max
+    allowResourceCreation: false,     // No token creation
+    allowComponentCalls: true,        // Allow DeFi but not creation
+    maxActionsPerTransaction: 3       // Keep transactions simple
+  },
+  {
+    maxTransactions: 20,              // 20 transactions max
+    timeWindowMs: 300000,             // Per 5 minutes
+    throwOnLimit: false
+  }
+);
+
+// Use in agent tools
+async function secureTransfer(amount: number, destination: string) {
+  const metadata = {
+    totalAmount: amount,
+    destinations: [destination],
+    hasResourceCreation: false,
+    hasComponentCalls: false,
+    actionCount: 2
+  };
+  
+  const result = aiSecurity.validateTransaction(transaction, metadata);
+  
+  if (!result.valid) {
+    return `❌ Transaction blocked: ${result.reason}`;
+  }
+  
+  // Proceed with transaction
+  return await executeTransfer(amount, destination);
+}
+```
+
+### Production Environment
+
+Multi-layered security for production applications:
+
+```typescript
+// Production security with comprehensive rules
+const productionSecurity = new TransactionSecurity(
+  {
+    maxAmount: 10000,                 // Higher limit for production
+    allowedDestinations: [            // Whitelist known addresses
+      ...trustedPartnerAddresses,
+      ...internalTreasuryAddresses
+    ],
+    forbiddenDestinations: [          // Blacklist known bad actors
+      ...reportedScamAddresses,
+      ...sanctionedAddresses
+    ],
+    allowResourceCreation: true,      // Allow business operations
+    allowComponentCalls: true,
+    maxActionsPerTransaction: 15      // Complex business logic allowed
+  },
+  {
+    maxTransactions: 100,             // Higher throughput
+    timeWindowMs: 3600000,            // Per hour
+    throwOnLimit: true                // Strict enforcement
+  }
+);
+```
+
+## Integration with Other Components
+
+### With RadixAgent
+
+```typescript
+import { RadixAgent, TransactionSecurity } from "radix-agent-kit";
+
+// Create secure agent
+const security = TransactionSecurity.createDefault();
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  transactionSecurity: security  // Add security layer
+});
+
+// Security is automatically enforced on all transactions
+await agent.run("Send 1000 XRD to Alice");  // May be blocked if > 100 XRD limit
+```
+
+### With Transaction Builder
+
+```typescript
+import { RadixTransactionBuilder, TransactionSecurity } from "radix-agent-kit";
+
+const builder = new RadixTransactionBuilder({ networkId: 2 });
+const security = new TransactionSecurity({ maxAmount: 500 });
+
+// Secure transaction building
+async function buildSecureTransaction(manifest: string, wallet: any) {
+  // Build transaction
+  const result = await builder.buildCustomManifestTransaction(
+    manifest, 
+    wallet.getPrivateKey(), 
+    await gateway.getCurrentEpoch()
+  );
+  
+  // Security validation before submission
+  const validation = security.validateTransaction(result.transaction, {
+    totalAmount: extractAmountFromManifest(manifest),
+    destinations: extractDestinationsFromManifest(manifest),
+    hasResourceCreation: manifest.includes('CREATE_FUNGIBLE_RESOURCE'),
+    hasComponentCalls: manifest.includes('CALL_FUNCTION'),
+    actionCount: manifest.split('CALL_').length - 1
+  });
+  
+  if (!validation.valid) {
+    throw new Error(`Security check failed: ${validation.reason}`);
+  }
+  
+  return result;
+}
+```
+
+---
+
+<Warning>
+**Production Security**: Always use TransactionSecurity in production environments. AI agents can make unpredictable transactions that may result in loss of funds without proper validation.
+</Warning>
+
+<Note>
+**Performance**: TransactionSecurity adds minimal overhead to transaction processing while providing essential security guarantees.
+</Note> 

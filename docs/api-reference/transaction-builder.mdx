@@ -1,0 +1,503 @@
+---
+title: "RadixTransactionBuilder"
+description: "Low-level transaction construction and signing"
+---
+
+# RadixTransactionBuilder
+
+The `RadixTransactionBuilder` class provides low-level transaction construction capabilities for the Radix network. It creates transaction manifests and handles transaction compilation using the Radix Engine Toolkit.
+
+## Constructor
+
+```typescript
+constructor(config: RadixTransactionBuilderConfig)
+```
+
+Creates a new transaction builder instance.
+
+### RadixTransactionBuilderConfig
+
+```typescript
+interface RadixTransactionBuilderConfig {
+  networkId: RadixNetwork;
+}
+```
+
+**Example:**
+```typescript
+import { RadixTransactionBuilder, RadixNetwork } from "radix-agent-kit";
+
+const builder = new RadixTransactionBuilder({
+  networkId: RadixNetwork.Stokenet
+});
+```
+
+## Core Transaction Building
+
+### buildCustomManifestTransaction(manifest: string, signerPrivateKey: PrivateKey, currentEpoch: number, message?: string): Promise\<TransactionResult>
+
+Build a transaction from a custom manifest string.
+
+```typescript
+interface TransactionResult {
+  transaction: any;
+  compiled: Uint8Array;
+}
+
+const manifest = `
+  CALL_METHOD
+    Address("${fromAccount}")
+    "lock_fee"
+    Decimal("10");
+  
+  CALL_METHOD
+    Address("${fromAccount}")
+    "withdraw"
+    Address("${resourceAddress}")
+    Decimal("${amount}");
+`;
+
+const result = await builder.buildCustomManifestTransaction(
+  manifest,
+  privateKey,
+  currentEpoch
+);
+
+console.log("Compiled transaction size:", result.compiled.length);
+```
+
+### buildTransferTransaction(options: TransferOptions, fromAccountPrivateKey: PrivateKey, currentEpoch: number): Promise\<Uint8Array>
+
+Build a simple transfer transaction.
+
+```typescript
+interface TransferOptions {
+  fromAccount: string;
+  toAccount: string;
+  resourceAddress: string;
+  amount: string | number;
+}
+
+const transferOptions = {
+  fromAccount: "account_tdx_2_1c8atrq...",
+  toAccount: "account_tdx_2_1c9xyz...",
+  resourceAddress: builder.getXRDResourceAddress(),
+  amount: "100"
+};
+
+const transaction = await builder.buildTransferTransaction(
+  transferOptions,
+  privateKey,
+  currentEpoch
+);
+```
+
+### buildFaucetTransaction(toAccount: string, currentEpoch: number): Promise\<Uint8Array>
+
+Build a faucet transaction for testnet funding.
+
+```typescript
+const faucetTx = await builder.buildFaucetTransaction(
+  "account_tdx_2_1c8atrq...",
+  currentEpoch
+);
+```
+
+## Manifest Creation
+
+### createTransferManifest(fromAccount: string, toAccount: string, resourceAddress: string, amount: string | number): string
+
+Create a transfer manifest string.
+
+```typescript
+const manifest = builder.createTransferManifest(
+  "account_tdx_2_1c8atrq...",
+  "account_tdx_2_1c9xyz...",
+  builder.getXRDResourceAddress(),
+  "100"
+);
+
+console.log("Transfer manifest:", manifest);
+```
+
+### createTokenManifest(ownerAccount: string, tokenName: string, tokenSymbol: string, initialSupply: string | number, divisibility?: number): string
+
+Create a fungible token creation manifest.
+
+```typescript
+const tokenManifest = builder.createTokenManifest(
+  "account_tdx_2_1c8atrq...",
+  "GameCoin",
+  "GAME",
+  "1000000",
+  18 // divisibility
+);
+```
+
+**Parameters:**
+- `ownerAccount` - Account that will own the token
+- `tokenName` - Display name for the token
+- `tokenSymbol` - Token symbol (e.g., "GAME")
+- `initialSupply` - Initial token supply
+- `divisibility` - Number of decimal places (default: 18)
+
+### createStakeManifest(accountAddress: string, validatorAddress: string, amount: string | number): string
+
+Create a staking manifest.
+
+```typescript
+const stakeManifest = builder.createStakeManifest(
+  "account_tdx_2_1c8atrq...",
+  "validator_tdx_2_1sd5368...",
+  "1000"
+);
+```
+
+## Utility Methods
+
+### getCompiledTransactionHex(transaction: Uint8Array): string
+
+Convert compiled transaction to hex string for Gateway submission.
+
+```typescript
+const hexString = builder.getCompiledTransactionHex(compiledTransaction);
+console.log("Transaction hex:", hexString);
+```
+
+### prevalidate(transaction: Uint8Array): Promise\<boolean>
+
+Basic validation of transaction bytes.
+
+```typescript
+const isValid = await builder.prevalidate(transactionBytes);
+if (isValid) {
+  console.log("✅ Transaction appears valid");
+} else {
+  console.log("❌ Transaction validation failed");
+}
+```
+
+### deriveAccountAddress(publicKey: PublicKey): Promise\<string>
+
+Derive account address from public key.
+
+```typescript
+import { PrivateKey } from "@radixdlt/radix-engine-toolkit";
+
+const privateKey = new PrivateKey.Ed25519(privateKeyHex);
+const publicKey = privateKey.publicKey();
+
+const address = await builder.deriveAccountAddress(publicKey);
+console.log("Derived address:", address);
+```
+
+### isValidAddress(address: string): boolean
+
+Validate address format for current network.
+
+```typescript
+const isValid = builder.isValidAddress("account_tdx_2_1c8atrq...");
+if (isValid) {
+  console.log("✅ Valid address format");
+}
+```
+
+## Network Information
+
+### getXRDResourceAddress(): string
+
+Get XRD resource address for current network.
+
+```typescript
+const xrdAddress = builder.getXRDResourceAddress();
+console.log("XRD address:", xrdAddress);
+
+// Stokenet: resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc
+// Mainnet: resource_rdx1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxradxrd
+```
+
+### getNetworkId(): number
+
+Get numeric network ID.
+
+```typescript
+const networkId = builder.getNetworkId();
+console.log("Network ID:", networkId); // 1 = Mainnet, 2 = Stokenet
+```
+
+### getRadixNetwork(): RadixNetwork
+
+Get RadixNetwork enum value.
+
+```typescript
+const network = builder.getRadixNetwork();
+console.log("Network:", network); // 'mainnet' or 'stokenet'
+```
+
+## Static Utilities
+
+### createPrivateKeyFromHex(hexString: string, keyType?: 'Ed25519' | 'Secp256k1'): PrivateKey
+
+Create PrivateKey instance from hex string.
+
+```typescript
+const privateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
+  "a1b2c3d4...",
+  "Ed25519"
+);
+```
+
+## Type Definitions
+
+### SignableTransactionIntent
+
+```typescript
+interface SignableTransactionIntent {
+  intentHash: string;
+  payloadBytes: Uint8Array;
+}
+```
+
+### SignedTransaction
+
+```typescript
+interface SignedTransaction {
+  intentHash: string;
+  signature: string;
+  publicKey: string;
+  compiledTransaction: string;
+  intentPayload: Uint8Array;
+  signatures: string[];
+}
+```
+
+### TransferOptions
+
+```typescript
+interface TransferOptions {
+  fromAccount: string;
+  toAccount: string;
+  resourceAddress: string;
+  amount: string | number;
+}
+```
+
+## Usage Examples
+
+### Basic Transfer Transaction
+
+```typescript
+import { 
+  RadixTransactionBuilder, 
+  RadixGatewayClient,
+  RadixNetwork 
+} from "radix-agent-kit";
+import { PrivateKey } from "@radixdlt/radix-engine-toolkit";
+
+// Setup
+const builder = new RadixTransactionBuilder({
+  networkId: RadixNetwork.Stokenet
+});
+
+const gateway = new RadixGatewayClient({
+  networkId: RadixNetwork.Stokenet
+});
+
+// Create transfer manifest
+const manifest = builder.createTransferManifest(
+  "account_tdx_2_1c8atrq...",
+  "account_tdx_2_1c9xyz...",
+  builder.getXRDResourceAddress(),
+  "100"
+);
+
+// Build and submit transaction
+const privateKey = new PrivateKey.Ed25519(privateKeyHex);
+const currentEpoch = await gateway.getCurrentEpoch();
+
+const result = await builder.buildCustomManifestTransaction(
+  manifest,
+  privateKey,
+  currentEpoch
+);
+
+// Submit to network
+const hexString = builder.getCompiledTransactionHex(result.compiled);
+const submitResponse = await gateway.submitTransaction(hexString);
+```
+
+### Token Creation
+
+```typescript
+// Create token manifest
+const tokenManifest = builder.createTokenManifest(
+  ownerAccount,
+  "MyToken",
+  "MTK",
+  "1000000",
+  18
+);
+
+// Build transaction
+const result = await builder.buildCustomManifestTransaction(
+  tokenManifest,
+  privateKey,
+  currentEpoch
+);
+
+// Submit
+const hexString = builder.getCompiledTransactionHex(result.compiled);
+const response = await gateway.submitTransaction(hexString);
+
+console.log("Token creation transaction:", response);
+```
+
+### Staking Transaction
+
+```typescript
+// Create staking manifest
+const stakeManifest = builder.createStakeManifest(
+  accountAddress,
+  validatorAddress,
+  "1000"
+);
+
+// Build and submit
+const result = await builder.buildCustomManifestTransaction(
+  stakeManifest,
+  privateKey,
+  currentEpoch
+);
+
+const hexString = builder.getCompiledTransactionHex(result.compiled);
+const response = await gateway.submitTransaction(hexString);
+```
+
+### Address Validation
+
+```typescript
+// Validate addresses before using
+const addresses = [
+  "account_tdx_2_1c8atrq...",
+  "resource_tdx_2_1tknxxx...",
+  "validator_tdx_2_1sd5368..."
+];
+
+addresses.forEach(address => {
+  if (builder.isValidAddress(address)) {
+    console.log(`✅ ${address} is valid`);
+  } else {
+    console.log(`❌ ${address} is invalid`);
+  }
+});
+```
+
+### Custom Manifest
+
+```typescript
+// Create custom manifest for complex operations
+const customManifest = `
+    CALL_METHOD
+        Address("${accountAddress}")
+        "lock_fee"
+        Decimal("10");
+  
+        CALL_METHOD
+    Address("${componentAddress}")
+    "custom_method"
+    "parameter1"
+    Decimal("123.45");
+        
+        CALL_METHOD
+    Address("${accountAddress}")
+            "deposit_batch"
+            Expression("ENTIRE_WORKTOP");
+        `;
+
+const result = await builder.buildCustomManifestTransaction(
+  customManifest,
+  privateKey,
+  currentEpoch,
+  "Custom operation"
+);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await builder.buildCustomManifestTransaction(
+    manifest,
+    privateKey,
+    currentEpoch
+  );
+} catch (error) {
+  if (error.message.includes('Failed to build transaction')) {
+    console.error("Transaction building failed:", error.message);
+  } else if (error.message.includes('Invalid manifest')) {
+    console.error("Manifest syntax error:", error.message);
+  } else {
+    console.error("Unexpected error:", error.message);
+  }
+}
+```
+
+## Integration with Other Components
+
+### With RadixAgent
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY
+});
+
+// Access transaction builder from agent
+const builder = agent.getTransactionBuilder();
+const xrdAddress = builder.getXRDResourceAddress();
+```
+
+### With Wallet
+
+```typescript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, { networkId: 2 });
+
+// Use wallet with transaction builder
+const privateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
+  wallet.getPrivateKeyHex()
+);
+
+const manifest = builder.createTransferManifest(
+  wallet.getAddress(),
+  targetAddress,
+  builder.getXRDResourceAddress(),
+  "100"
+);
+```
+
+## Best Practices
+
+1. **Validate Inputs**: Always validate addresses and amounts before building transactions
+2. **Current Epoch**: Use fresh epoch data for transaction validity
+3. **Fee Management**: Include appropriate fees in manifests (typically 10 XRD)
+4. **Error Handling**: Implement comprehensive error handling for transaction building
+5. **Testing**: Test manifests on Stokenet before mainnet deployment
+6. **Security**: Never expose private keys in logs or error messages
+
+## Manifest Syntax
+
+Transaction manifests use a specific syntax:
+
+- `CALL_METHOD` - Call a method on a component/account
+- `TAKE_ALL_FROM_WORKTOP` - Take resources from worktop
+- `CALL_FUNCTION` - Call a blueprint function
+- `CREATE_FUNGIBLE_RESOURCE` - Create new fungible token
+- `Address("...")` - Reference an address
+- `Decimal("...")` - Specify decimal amounts
+- `Bucket("name")` - Reference a bucket
+
+For complete manifest syntax, see the [Radix Transaction Manifest Documentation](https://docs.radixdlt.com/). 

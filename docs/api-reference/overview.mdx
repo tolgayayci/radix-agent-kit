@@ -1,0 +1,277 @@
+---
+title: "API Overview"
+description: "Complete TypeScript API reference for Radix Agent Kit"
+---
+
+# API Reference Overview
+
+Complete TypeScript API documentation for all classes, interfaces, and utilities in Radix Agent Kit. Use these APIs directly for precise control over blockchain operations.
+
+## 🔧 Core Architecture
+
+```typescript
+import { 
+  RadixAgent,                // AI agent with natural language interface
+  RadixGatewayClient,        // Radix network communication
+  RadixTransactionBuilder,   // Transaction construction
+  RadixMnemonicWallet,       // Mnemonic-based wallet
+  VaultWallet,               // Hardware wallet support
+  Token,                     // Token operations
+  DeFi,                      // DeFi operations
+  Component,                 // Smart contract interaction
+  TransactionSecurity,       // Security validation
+  KeyStorage,                // Secure key management
+  FaucetHelper               // Testnet funding
+} from "radix-agent-kit";
+```
+
+## 📖 API Categories
+
+### 🤖 Core Classes
+
+<CardGroup cols={1}>
+  <Card title="RadixAgent" icon="robot" href="/api-reference/agent">
+    **Main AI agent class** - Natural language interface with 16 specialized tools, memory support, and auto-wallet management
+  </Card>
+  <Card title="RadixGatewayClient" icon="globe" href="/api-reference/gateway">
+    **Network communication** - Gateway API client for account queries, transaction submission, and network information
+  </Card>
+  <Card title="RadixTransactionBuilder" icon="hammer" href="/api-reference/transaction-builder">
+    **Transaction construction** - Low-level transaction building, manifest creation, and signing utilities
+  </Card>
+</CardGroup>
+
+### 🔐 Wallet Management
+
+<CardGroup cols={2}>
+  <Card title="RadixMnemonicWallet" icon="key" href="/api-reference/mnemonic-wallet">
+    **BIP-39 mnemonic wallet** - 24-word wallet with Ed25519 cryptography and multi-account support
+  </Card>
+  <Card title="VaultWallet" icon="shield" href="/api-reference/vault-wallet">
+    **Hardware wallet** - HSM support and encrypted storage for production security
+  </Card>
+  <Card title="RadixAccount" icon="user" href="/api-reference/account">
+    **Account operations** - Balance queries, transaction history, and portfolio analysis
+  </Card>
+  <Card title="RadixWallet Interface" icon="wallet" href="/api-reference/wallet-interface">
+    **Base interface** - Standard contract for all wallet implementations
+  </Card>
+</CardGroup>
+
+### ⛓️ Blockchain Operations
+
+<CardGroup cols={2}>
+  <Card title="Token" icon="coins" href="/api-reference/token">
+    **Token operations** - Create, mint, and transfer fungible and non-fungible tokens
+  </Card>
+  <Card title="DeFi" icon="chart-line" href="/api-reference/defi">
+    **DeFi operations** - Staking, liquidity pools, token swapping, and yield farming
+  </Card>
+  <Card title="Component" icon="code" href="/api-reference/component">
+    **Smart contracts** - Component method calls, state queries, and custom integrations
+  </Card>
+  <Card title="Tools" icon="robot" href="/api-reference/tools">
+    **AI Tools** - All 16 LangChain tools for blockchain operations and direct usage
+  </Card>
+</CardGroup>
+
+### 🛡️ Security & Utilities
+
+<CardGroup cols={1}>
+  <Card title="TransactionSecurity" icon="shield-check" href="/api-reference/security">
+    **Transaction validation** - Rate limiting, amount restrictions, address whitelisting, and AI agent protection
+  </Card>
+  <Card title="KeyStorage" icon="lock" href="/api-reference/key-storage">
+    **Secure key management** - Encrypted storage for private keys and mnemonics with backup support
+  </Card>
+  <Card title="FaucetHelper" icon="droplet" href="/api-reference/faucet">
+    **Testnet funding** - Automated XRD funding for Stokenet wallets with multiple fallback methods
+  </Card>
+</CardGroup>
+
+## 🌐 Network Support
+
+All APIs support both Radix networks:
+
+```typescript
+// Stokenet (testnet) - recommended for development
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet  // networkId: 2
+});
+
+// Mainnet (production)
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Mainnet   // networkId: 1
+});
+```
+
+## 🚀 Quick Start Examples
+
+### Basic Setup
+
+```typescript
+import { 
+  RadixGatewayClient, 
+  RadixMnemonicWallet, 
+  RadixTransactionBuilder,
+  RadixNetwork 
+} from "radix-agent-kit";
+
+// Setup core components
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  process.env.RADIX_MNEMONIC!,
+  { networkId: 2 }
+);
+
+const builder = new RadixTransactionBuilder({ 
+  networkId: RadixNetwork.Stokenet 
+});
+```
+
+### Direct Operations
+
+```typescript
+import { Token, DeFi, Component } from "radix-agent-kit";
+
+// Token operations
+const token = new Token(builder, gateway, 2);
+const tokenTxHash = await token.createFungibleResource({
+  name: "MyToken",
+  symbol: "MTK",
+  initialSupply: "1000000"
+}, wallet, await gateway.getCurrentEpoch());
+
+// DeFi operations
+const defi = new DeFi(builder, gateway, 2);
+const stakeTxHash = await defi.stakeXRD({
+  accountAddress: wallet.getAddress(),
+  validatorAddress: "validator_tdx_2_1sd5368...",
+  amount: "100"
+}, wallet, await gateway.getCurrentEpoch());
+
+// Component operations
+const component = new Component(builder, gateway, 2);
+const callTxHash = await component.callMethod({
+  componentAddress: "component_tdx_2_1cptx...",
+  methodName: "custom_method",
+  args: ["arg1", "arg2"]
+}, wallet, await gateway.getCurrentEpoch());
+```
+
+## 🔄 Common Patterns
+
+### Transaction Flow
+
+```typescript
+// 1. Get current epoch
+const currentEpoch = await gateway.getCurrentEpoch();
+
+// 2. Create transaction manifest
+const manifest = builder.createTransferManifest(
+  wallet.getAddress(),
+  targetAddress,
+  builder.getXRDResourceAddress(),
+  "100"
+);
+
+// 3. Build and sign transaction
+const result = await builder.buildCustomManifestTransaction(
+  manifest,
+  RadixTransactionBuilder.createPrivateKeyFromHex(wallet.getPrivateKeyHex()),
+  currentEpoch
+);
+
+// 4. Submit to network
+const submitResponse = await gateway.submitTransaction(
+  builder.getCompiledTransactionHex(result.compiled)
+);
+
+console.log("Transaction submitted:", submitResponse);
+```
+
+### Error Handling
+
+```typescript
+try {
+  const balances = await gateway.getAccountBalances(address);
+  console.log("Account balances:", balances);
+} catch (error) {
+  if (error.message.includes("Entity not found")) {
+    console.error("Account does not exist");
+  } else if (error.message.includes("Network error")) {
+    console.error("Connection issue - retry later");
+  } else {
+    console.error("Unexpected error:", error.message);
+  }
+}
+```
+
+### Security Integration
+
+```typescript
+import { TransactionSecurity } from "radix-agent-kit";
+
+// Create security layer
+const security = TransactionSecurity.createDefault();
+
+// Validate before transaction
+const validation = security.validateTransaction(transaction, {
+  totalAmount: 100,
+  destinations: [targetAddress],
+  hasResourceCreation: false,
+  actionCount: 2
+});
+
+if (!validation.valid) {
+  throw new Error(`Security check failed: ${validation.reason}`);
+}
+
+// Check rate limits
+if (!security.checkRateLimit()) {
+  throw new Error("Rate limit exceeded - please wait");
+}
+
+// Proceed with transaction
+await submitTransaction(transaction);
+```
+
+## 📝 API Conventions
+
+### Method Naming
+- **get\*()**: Query operations (read-only)
+- **create\*()**: Factory methods and resource creation
+- **build\*()**: Transaction construction
+- **submit\*()**: Network submission
+- **validate\*()**: Validation operations
+- **sign\*()**: Cryptographic operations
+
+### Parameter Patterns
+- **Required parameters**: Listed first in method signatures
+- **Options objects**: Used for complex operations with many parameters
+- **Network ID**: Specified during class initialization
+- **Async operations**: All network calls return Promises
+
+### Return Types
+- **Promises**: All async operations return typed Promises
+- **Transaction hashes**: String format for successful submissions
+- **Typed responses**: Full TypeScript support with interfaces
+- **Error objects**: Structured error information with helpful messages
+
+## 🎯 Best Practices
+
+1. **Reuse instances**: Create gateway and builder instances once, reuse across operations
+2. **Error handling**: Always wrap network operations in try-catch blocks
+3. **Rate limiting**: Use TransactionSecurity for production applications
+4. **Network separation**: Use different wallets for mainnet and testnet
+5. **Security first**: Validate transactions before signing and submission
+6. **Testing**: Start with Stokenet before deploying to mainnet
+
+---
+
+<Note>
+**TypeScript Support**: All APIs include complete TypeScript definitions for enhanced developer experience and compile-time safety.
+</Note> 

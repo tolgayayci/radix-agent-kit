@@ -1,0 +1,488 @@
+---
+title: "RadixAccount"
+description: "Account operations and management"
+---
+
+# RadixAccount
+
+The `RadixAccount` class provides high-level account operations and management functionality for Radix accounts. It simplifies common account tasks like balance checking, transaction history, and account metadata management.
+
+## Constructor
+
+```typescript
+constructor(
+  gatewayClient: RadixGatewayClient,
+  transactionBuilder: RadixTransactionBuilder,
+  networkId: number
+)
+```
+
+Creates a new RadixAccount instance.
+
+**Example:**
+```typescript
+import { 
+  RadixAccount, 
+  RadixGatewayClient, 
+  RadixTransactionBuilder,
+  RadixNetwork 
+} from "radix-agent-kit";
+
+const gateway = new RadixGatewayClient({
+  networkId: RadixNetwork.Stokenet
+});
+
+const builder = new RadixTransactionBuilder({
+  networkId: RadixNetwork.Stokenet
+});
+
+const account = new RadixAccount(gateway, builder, 2);
+```
+
+## Account Information
+
+### getAccountInfo(accountAddress: string): Promise\<AccountInfo>
+
+Get comprehensive account information.
+
+```typescript
+interface AccountInfo {
+  address: string;
+  publicKey?: string;
+  balances: AccountBalance[];
+  metadata: Record<string, any>;
+  stakePositions: StakePosition[];
+  totalValue: string;
+}
+
+const info = await account.getAccountInfo("account_tdx_2_1c8atrq...");
+
+console.log("Account address:", info.address);
+console.log("Total balances:", info.balances.length);
+console.log("Total value:", info.totalValue, "XRD");
+```
+
+### getAccountBalances(accountAddress: string): Promise\<AccountBalance[]\>
+
+Get detailed balance information for an account.
+
+```typescript
+interface AccountBalance {
+  resourceAddress: string;
+  amount: string;
+  symbol?: string;
+  name?: string;
+  iconUrl?: string;
+  divisibility: number;
+  resourceType: 'fungible' | 'non_fungible';
+}
+
+const balances = await account.getAccountBalances("account_tdx_2_1c8atrq...");
+
+balances.forEach(balance => {
+  console.log(`${balance.symbol || 'Unknown'}: ${balance.amount}`);
+});
+```
+
+### getXRDBalance(accountAddress: string): Promise\<string>
+
+Get XRD balance for an account.
+
+```typescript
+const xrdBalance = await account.getXRDBalance("account_tdx_2_1c8atrq...");
+console.log("XRD Balance:", xrdBalance);
+```
+
+## Transaction History
+
+### getTransactionHistory(accountAddress: string, options?: TransactionHistoryOptions): Promise\<TransactionHistory[]\>
+
+Get transaction history for an account.
+
+```typescript
+interface TransactionHistoryOptions {
+  limit?: number;
+  cursor?: string;
+  fromDate?: Date;
+  toDate?: Date;
+  resourceAddress?: string;
+}
+
+interface TransactionHistory {
+  transactionId: string;
+  timestamp: Date;
+  type: 'transfer' | 'stake' | 'unstake' | 'swap' | 'other';
+  status: 'success' | 'failed' | 'pending';
+  fee: string;
+  resources: TransactionResource[];
+  description: string;
+}
+
+const history = await account.getTransactionHistory(
+  "account_tdx_2_1c8atrq...",
+  { limit: 10 }
+);
+
+history.forEach(tx => {
+  console.log(`${tx.timestamp}: ${tx.type} - ${tx.status}`);
+});
+```
+
+### getRecentTransactions(accountAddress: string, count?: number): Promise\<TransactionHistory[]\>
+
+Get recent transactions for quick overview.
+
+```typescript
+const recent = await account.getRecentTransactions("account_tdx_2_1c8atrq...", 5);
+console.log(`${recent.length} recent transactions`);
+```
+
+## Account Creation
+
+### createAccount(options: CreateAccountOptions, wallet: RadixWallet): Promise\<string>
+
+Create a new account (for multi-account scenarios).
+
+```typescript
+interface CreateAccountOptions {
+  accountIndex?: number;
+  metadata?: Record<string, string>;
+  initialDeposit?: string;
+}
+
+const newAccountAddress = await account.createAccount(
+  {
+    accountIndex: 1,
+    metadata: {
+      name: "Trading Account",
+      description: "Account for trading operations"
+    },
+    initialDeposit: "100"
+  },
+  wallet
+);
+
+console.log("New account created:", newAccountAddress);
+```
+
+## Staking Operations
+
+### getStakePositions(accountAddress: string): Promise\<StakePosition[]\>
+
+Get all staking positions for an account.
+
+```typescript
+interface StakePosition {
+  validatorAddress: string;
+  validatorName?: string;
+  stakedAmount: string;
+  stakeUnits: string;
+  claimableRewards: string;
+  unstakingAmount: string;
+  unstakeEpoch?: number;
+}
+
+const stakes = await account.getStakePositions("account_tdx_2_1c8atrq...");
+
+stakes.forEach(stake => {
+  console.log(`Validator: ${stake.validatorName}`);
+  console.log(`Staked: ${stake.stakedAmount} XRD`);
+  console.log(`Rewards: ${stake.claimableRewards} XRD`);
+});
+```
+
+### getTotalStakedAmount(accountAddress: string): Promise\<string>
+
+Get total amount staked across all validators.
+
+```typescript
+const totalStaked = await account.getTotalStakedAmount("account_tdx_2_1c8atrq...");
+console.log("Total staked:", totalStaked, "XRD");
+```
+
+### getClaimableRewards(accountAddress: string): Promise\<string>
+
+Get total claimable rewards across all validators.
+
+```typescript
+const rewards = await account.getClaimableRewards("account_tdx_2_1c8atrq...");
+console.log("Claimable rewards:", rewards, "XRD");
+```
+
+## Account Metadata
+
+### getAccountMetadata(accountAddress: string): Promise\<Record\<string, any>>
+
+Get account metadata.
+
+```typescript
+const metadata = await account.getAccountMetadata("account_tdx_2_1c8atrq...");
+
+console.log("Account name:", metadata.name);
+console.log("Account description:", metadata.description);
+```
+
+### setAccountMetadata(accountAddress: string, metadata: Record\<string, string>, wallet: RadixWallet): Promise\<string>
+
+Set account metadata.
+
+```typescript
+const txHash = await account.setAccountMetadata(
+  "account_tdx_2_1c8atrq...",
+  {
+    name: "My Main Account",
+    description: "Primary trading account",
+    avatar: "https://example.com/avatar.png"
+  },
+  wallet
+);
+
+console.log("Metadata updated:", txHash);
+```
+
+## Account Validation
+
+### isValidAccountAddress(address: string): boolean
+
+Validate account address format.
+
+```typescript
+const isValid = account.isValidAccountAddress("account_tdx_2_1c8atrq...");
+console.log("Valid address:", isValid);
+```
+
+### accountExists(accountAddress: string): Promise\<boolean>
+
+Check if account exists on the network.
+
+```typescript
+const exists = await account.accountExists("account_tdx_2_1c8atrq...");
+console.log("Account exists:", exists);
+```
+
+## Portfolio Analysis
+
+### getPortfolioValue(accountAddress: string): Promise\<PortfolioValue>
+
+Get comprehensive portfolio analysis.
+
+```typescript
+interface PortfolioValue {
+  totalValueXRD: string;
+  totalValueUSD?: string;
+  breakdown: {
+    liquid: string;
+    staked: string;
+    rewards: string;
+    nfts: number;
+  };
+  topHoldings: AccountBalance[];
+}
+
+const portfolio = await account.getPortfolioValue("account_tdx_2_1c8atrq...");
+
+console.log("Total value:", portfolio.totalValueXRD, "XRD");
+console.log("Liquid assets:", portfolio.breakdown.liquid, "XRD");
+console.log("Staked assets:", portfolio.breakdown.staked, "XRD");
+console.log("NFT count:", portfolio.breakdown.nfts);
+```
+
+### getAssetAllocation(accountAddress: string): Promise\<AssetAllocation[]\>
+
+Get asset allocation breakdown.
+
+```typescript
+interface AssetAllocation {
+  resourceAddress: string;
+  symbol: string;
+  percentage: number;
+  valueXRD: string;
+}
+
+const allocation = await account.getAssetAllocation("account_tdx_2_1c8atrq...");
+
+allocation.forEach(asset => {
+  console.log(`${asset.symbol}: ${asset.percentage}% (${asset.valueXRD} XRD)`);
+});
+```
+
+## Usage Examples
+
+### Account Dashboard
+
+```typescript
+async function createAccountDashboard(accountAddress: string) {
+  const account = new RadixAccount(gateway, builder, 2);
+  
+  // Get comprehensive account info
+  const info = await account.getAccountInfo(accountAddress);
+  const portfolio = await account.getPortfolioValue(accountAddress);
+  const recentTxs = await account.getRecentTransactions(accountAddress, 5);
+  
+  console.log("=== Account Dashboard ===");
+  console.log("Address:", info.address);
+  console.log("Total Value:", portfolio.totalValueXRD, "XRD");
+  console.log("Assets:", info.balances.length);
+  console.log("Recent Transactions:", recentTxs.length);
+  
+  // Show top holdings
+  console.log("\n=== Top Holdings ===");
+  portfolio.topHoldings.forEach((holding, i) => {
+    console.log(`${i + 1}. ${holding.symbol}: ${holding.amount}`);
+  });
+  
+  // Show staking info
+  if (info.stakePositions.length > 0) {
+    console.log("\n=== Staking Positions ===");
+    info.stakePositions.forEach(stake => {
+      console.log(`${stake.validatorName}: ${stake.stakedAmount} XRD`);
+    });
+  }
+}
+
+await createAccountDashboard("account_tdx_2_1c8atrq...");
+```
+
+### Multi-Account Management
+
+```typescript
+async function manageMultipleAccounts(addresses: string[]) {
+  const account = new RadixAccount(gateway, builder, 2);
+  
+  for (const address of addresses) {
+    const info = await account.getAccountInfo(address);
+    const xrdBalance = await account.getXRDBalance(address);
+    
+    console.log(`Account: ${address}`);
+    console.log(`XRD Balance: ${xrdBalance}`);
+    console.log(`Total Assets: ${info.balances.length}`);
+    console.log("---");
+  }
+}
+
+const accounts = [
+  "account_tdx_2_1c8atrq...",
+  "account_tdx_2_1c9xyz...",
+  "account_tdx_2_1cabc..."
+];
+
+await manageMultipleAccounts(accounts);
+```
+
+### Transaction Analysis
+
+```typescript
+async function analyzeTransactions(accountAddress: string) {
+  const account = new RadixAccount(gateway, builder, 2);
+  
+  const history = await account.getTransactionHistory(accountAddress, {
+    limit: 100
+  });
+  
+  // Analyze transaction types
+  const typeCount = history.reduce((acc, tx) => {
+    acc[tx.type] = (acc[tx.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  console.log("Transaction Analysis:");
+  Object.entries(typeCount).forEach(([type, count]) => {
+    console.log(`${type}: ${count} transactions`);
+  });
+  
+  // Calculate total fees
+  const totalFees = history.reduce((sum, tx) => {
+    return sum + parseFloat(tx.fee);
+  }, 0);
+  
+  console.log(`Total fees paid: ${totalFees} XRD`);
+}
+
+await analyzeTransactions("account_tdx_2_1c8atrq...");
+```
+
+### Portfolio Tracking
+
+```typescript
+async function trackPortfolio(accountAddress: string) {
+  const account = new RadixAccount(gateway, builder, 2);
+  
+  const portfolio = await account.getPortfolioValue(accountAddress);
+  const allocation = await account.getAssetAllocation(accountAddress);
+  
+  console.log("=== Portfolio Summary ===");
+  console.log("Total Value:", portfolio.totalValueXRD, "XRD");
+  console.log("Liquid:", portfolio.breakdown.liquid, "XRD");
+  console.log("Staked:", portfolio.breakdown.staked, "XRD");
+  console.log("Rewards:", portfolio.breakdown.rewards, "XRD");
+  
+  console.log("\n=== Asset Allocation ===");
+  allocation.forEach(asset => {
+    console.log(`${asset.symbol}: ${asset.percentage.toFixed(2)}%`);
+  });
+}
+
+await trackPortfolio("account_tdx_2_1c8atrq...");
+```
+
+## Error Handling
+
+```typescript
+try {
+  const info = await account.getAccountInfo("invalid_address");
+} catch (error) {
+  if (error.message.includes('Invalid address')) {
+    console.error("Address format is invalid");
+  } else if (error.message.includes('Account not found')) {
+    console.error("Account does not exist");
+  } else if (error.message.includes('Network error')) {
+    console.error("Unable to connect to Radix network");
+  } else {
+    console.error("Account operation failed:", error.message);
+  }
+}
+```
+
+## Integration with Other Components
+
+### With RadixAgent
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY
+});
+
+// RadixAccount is used internally by the agent
+await agent.run("Show my account details");
+await agent.run("What's my portfolio value?");
+```
+
+### With Wallet
+
+```typescript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, { networkId: 2 });
+const accountAddress = wallet.getAddress();
+
+// Use account operations with wallet
+const info = await account.getAccountInfo(accountAddress);
+const txHash = await account.setAccountMetadata(accountAddress, metadata, wallet);
+```
+
+## Best Practices
+
+1. **Caching**: Cache account information to reduce API calls
+2. **Error Handling**: Always handle network and validation errors
+3. **Rate Limiting**: Respect Gateway API rate limits
+4. **Pagination**: Use pagination for large transaction histories
+5. **Validation**: Validate addresses before making API calls
+6. **Monitoring**: Monitor account changes for security
+7. **Backup**: Maintain backups of important account metadata
+
+<Note>
+**Performance**: Account operations involve network calls. Consider caching frequently accessed data and using batch operations when possible.
+</Note> 

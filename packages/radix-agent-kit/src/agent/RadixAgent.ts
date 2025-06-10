@@ -13,6 +13,7 @@ import { RadixMnemonicWallet } from '../radix/MnemonicWallet';
 import { FaucetHelper } from '../utils/FaucetHelper';
 import { createDefaultRadixTools } from "./tools";
 import { NetworkId } from "@radixdlt/radix-engine-toolkit";
+import { z } from "zod";
 
 /**
  * Configuration for the Radix Agent
@@ -40,6 +41,8 @@ export interface RadixAgentConfig {
   maxIterations?: number;
   /** Whether to enable verbose logging */
   verbose?: boolean;
+  /** Skip automatic funding of new wallets */
+  skipAutoFunding?: boolean;
 }
 
 /**
@@ -58,17 +61,24 @@ export class RadixAgent {
 
   constructor(config: RadixAgentConfig) {
     this.config = config;
-    this.networkId = this.mapRadixNetworkToNetworkId(config.networkId);
+    
+    // Security: If no mnemonic provided, force Stokenet network for safety
+    if (!config.mnemonic && !config.wallet && config.networkId === RadixNetwork.Mainnet) {
+      console.warn('⚠️ No wallet credentials provided. Forcing Stokenet network for security.');
+      this.config.networkId = RadixNetwork.Stokenet;
+    }
+    
+    this.networkId = this.mapRadixNetworkToNetworkId(this.config.networkId);
 
     // Initialize Gateway client
     this.gatewayClient = new RadixGatewayClient({
-      networkId: config.networkId,
+      networkId: this.config.networkId,
       applicationName: config.applicationName || "RadixAgentKit",
     });
 
     // Initialize transaction builder
     this.transactionBuilder = new RadixTransactionBuilder({
-      networkId: config.networkId,
+      networkId: this.config.networkId,
     });
 
     // Initialize LLM with better configuration
@@ -97,10 +107,13 @@ export class RadixAgent {
         applicationName: config.applicationName || "RadixAgentKit",
       });
     }
+    // If no wallet, it will be created during initialization
 
-    // Initialize tools
+    // Initialize tools (only if wallet is available)
     this.tools = [];
-    this.initializeTools();
+    if (this.wallet) {
+      this.initializeTools();
+    }
   }
 
   /**
@@ -140,10 +153,7 @@ export class RadixAgent {
 
     this.tools = [...defaultTools, ...customTools];
       
-      console.log(`✅ Initialized ${this.tools.length} tools for Radix Agent`);
-      this.tools.forEach(tool => {
-        console.log(`  - ${tool.name}: ${tool.description}`);
-      });
+      console.log(`✅ Agent ready with ${this.tools.length} tools\n`);
     } catch (error) {
       console.error("Error initializing tools:", error);
       this.tools = [];
@@ -234,7 +244,7 @@ Be helpful, accurate, and always use your tools to provide real blockchain data.
   public setWallet(wallet: RadixWallet): void {
     this.wallet = wallet;
     this.initializeTools();
-    // Reset agent to reinitialize with new wallet
+    // Reset agent to reinitialize with new wallet and tools
     this.agent = undefined;
   }
 
@@ -353,6 +363,10 @@ Be helpful, accurate, and always use your tools to provide real blockchain data.
       return "Please provide a question or request for me to help with.";
     }
 
+    if (!this.wallet) {
+      throw new Error("No wallet available. This should not happen after proper initialization.");
+    }
+
     try {
       // Initialize agent if not already done
     if (!this.agent) {
@@ -374,15 +388,11 @@ Be helpful, accurate, and always use your tools to provide real blockchain data.
         const memoryVariables = await this.memory.loadMemoryVariables({});
         inputParams.chat_history = memoryVariables.chat_history || [];
         } catch (memoryError) {
-          console.warn("Memory loading failed, using empty history:", memoryError);
           inputParams.chat_history = [];
         }
       } else {
         inputParams.chat_history = [];
       }
-
-      console.log(`🤖 Processing query: "${input}"`);
-      console.log(`📊 Available tools: ${this.tools.length}`);
 
       // Execute the agent with timeout
       const result = await Promise.race([
@@ -396,14 +406,11 @@ Be helpful, accurate, and always use your tools to provide real blockchain data.
       if (result && result.output) {
         const output = result.output.trim();
         if (output && output !== "I apologize, but I couldn't process your request.") {
-          console.log("✅ Agent execution successful");
           return output;
         }
       }
 
       // If we get here, the agent didn't provide a useful response
-      console.warn("Agent returned empty or generic response, checking intermediate steps");
-      
       if (result.intermediateSteps && result.intermediateSteps.length > 0) {
         const lastStep = result.intermediateSteps[result.intermediateSteps.length - 1];
         if (lastStep.observation) {
@@ -503,14 +510,82 @@ Be helpful, accurate, and always use your tools to provide real blockchain data.
   public getFaucetHelper(): FaucetHelper {
     return new FaucetHelper(this.config.networkId);
   }
+
+  /**
+   * Initialize the agent, creating wallet if needed
+   */
+  public async initialize(): Promise<void> {
+    // Create wallet if none provided
+    if (!this.wallet) {
+      await this.createAndFundWalletAsync();
+    }
+    
+    // Initialize tools now that wallet is available
+    if (this.wallet && this.tools.length === 0) {
+      this.initializeTools();
+    }
+  }
+
+  /**
+   * Create and fund a wallet asynchronously with proper address derivation
+   */
+  private async createAndFundWalletAsync(): Promise<void> {
+    console.log('🔐 No wallet provided. Creating new wallet on Stokenet...\n');
+    
+    // Create wallet with async address derivation
+    const wallet = await RadixMnemonicWallet.generateRandomAsync({
+      networkId: this.networkId,
+      applicationName: this.config.applicationName || "RadixAgentKit",
+    });
+    
+    const mnemonic = wallet.getMnemonic();
+    let address = wallet.getAddress();
+    
+    // Wait for proper address derivation if needed
+    if (address.includes('pending') && (wallet as any).waitForProperAddress) {
+      console.log('⏳ Waiting for address derivation...');
+      await (wallet as any).waitForProperAddress();
+      address = wallet.getAddress();
+    }
+    
+    // Set the wallet
+    this.wallet = wallet;
+    
+    // Get current balance
+    let balance = 0;
+    if (this.config.networkId === RadixNetwork.Stokenet) {
+      try {
+        const { FaucetHelper } = await import('../utils/FaucetHelper');
+        const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+        balance = await faucetHelper.getXRDBalance(wallet);
+      } catch (error) {
+        console.warn('Could not check initial balance:', error);
+      }
+    }
+    
+    // Show wallet details to user
+    console.log('\n✅ New wallet ready:');
+    console.log(`   Address: ${address}`);
+    console.log(`   Balance: ${balance} XRD${balance > 0 ? ' ✅' : ' ⚠️ (needs funding)'}`);
+    console.log(`   Mnemonic: ${mnemonic}`);
+    console.log(`   Network: ${this.config.networkId}`);
+    console.log(`   Dashboard: https://stokenet-dashboard.radixdlt.com/account/${address}`);
+    console.log('⚠️  Save your mnemonic phrase securely!\n');
+    
+    if (balance === 0) {
+      console.log('💡 To fund your wallet, simply ask me: "Fund my wallet with testnet XRD"');
+      console.log('💡 Or visit: https://stokenet-dashboard.radixdlt.com/ for manual funding\n');
+    }
+  }
 }
 
 /**
- * Factory function to create a Radix Agent
+ * Factory function to create a Radix Agent with proper initialization
  */
 export async function createRadixAgent(
   config: RadixAgentConfig
 ): Promise<RadixAgent> {
   const agent = new RadixAgent(config);
+  await agent.initialize();
   return agent;
 }

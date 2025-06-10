@@ -268,7 +268,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -366,7 +366,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -451,7 +451,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -534,7 +534,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -740,7 +740,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -777,7 +777,7 @@ export class DeFi {
 
       // In a real implementation, we would parse the validator component state
       // to get the stake unit resource address. This is a simplified version.
-      const stakeUnitAddress = this.extractStakeUnitAddress(
+      const stakeUnitAddress = await this.extractStakeUnitAddress(
         validatorInfo,
         ownerAddress
       );
@@ -829,7 +829,7 @@ export class DeFi {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -844,7 +844,7 @@ export class DeFi {
   }
 
   /**
-   * Claim XRD from a validator
+   * Claim XRD from a validator using Stake Claims NFTs
    *
    * @param options - Claim XRD options
    * @param ownerWallet - Wallet for signing transactions
@@ -852,6 +852,90 @@ export class DeFi {
    * @returns Transaction hash
    */
   async claimXRD(
+    options: ClaimXRDOptions,
+    ownerWallet: RadixWallet,
+    currentEpoch: number
+  ): Promise<string> {
+    try {
+      const { ownerAddress, validatorAddress } = options;
+
+      // Find Stake Claims NFTs in the account
+      const stakeClaimsNFTAddress = await this.findStakeClaimsNFTs(ownerAddress);
+
+      if (!stakeClaimsNFTAddress) {
+        // If no Stake Claims NFTs found, try the old direct claim method as fallback
+        console.log('No Stake Claims NFTs found, trying direct claim method...');
+        return await this.claimXRDDirect(options, ownerWallet, currentEpoch);
+      }
+
+      const ownerPrivateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
+        ownerWallet.getPrivateKeyHex(),
+        "Ed25519"
+      );
+
+      // Create a manifest for claiming XRD using Stake Claims NFTs
+      const manifest = `
+        CALL_METHOD
+          Address("${ownerAddress}")
+          "lock_fee"
+          Decimal("10");
+        
+        CALL_METHOD
+          Address("${ownerAddress}")
+          "withdraw_non_fungibles"
+          Address("${stakeClaimsNFTAddress}")
+          Array<NonFungibleLocalId>();
+        
+        TAKE_ALL_FROM_WORKTOP
+          Address("${stakeClaimsNFTAddress}")
+          Bucket("claim_nfts");
+        
+        CALL_METHOD
+          Address("${validatorAddress}")
+          "claim_xrd"
+          Bucket("claim_nfts");
+        
+        CALL_METHOD
+          Address("${ownerAddress}")
+          "deposit_batch"
+          Expression("ENTIRE_WORKTOP");
+      `;
+
+      console.log(`Using Stake Claims NFTs: ${stakeClaimsNFTAddress}`);
+
+      // Build and submit transaction
+      const compiledTransaction =
+        await this.transactionBuilder.buildCustomManifestTransaction(
+          manifest,
+          ownerPrivateKey,
+          currentEpoch,
+          `Claim XRD using Stake Claims NFTs from validator ${validatorAddress}`
+        );
+
+      const txHex =
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
+      const submitResult = await this.gatewayClient.submitTransaction(txHex);
+
+      if (submitResult.duplicate) {
+        throw new Error("Transaction was duplicate");
+      }
+
+      return txHex;
+    } catch (error) {
+      console.error("Error claiming XRD:", error);
+      throw new Error(`Failed to claim XRD: ${error}`);
+    }
+  }
+
+  /**
+   * Fallback method: Direct claim XRD from validator (old method)
+   *
+   * @param options - Claim XRD options
+   * @param ownerWallet - Wallet for signing transactions
+   * @param currentEpoch - Current epoch for transaction validity
+   * @returns Transaction hash
+   */
+  private async claimXRDDirect(
     options: ClaimXRDOptions,
     ownerWallet: RadixWallet,
     currentEpoch: number
@@ -877,7 +961,7 @@ export class DeFi {
         "Ed25519"
       );
 
-      // Create a manifest for claiming XRD
+      // Create a manifest for claiming XRD directly
       const manifest = `
         CALL_METHOD
           Address("${ownerAddress}")
@@ -901,11 +985,11 @@ export class DeFi {
           manifest,
           ownerPrivateKey,
           currentEpoch,
-          `Claim XRD from validator ${validatorAddress}`
+          `Claim XRD directly from validator ${validatorAddress}`
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {
@@ -914,47 +998,58 @@ export class DeFi {
 
       return txHex;
     } catch (error) {
-      console.error("Error claiming XRD:", error);
-      throw new Error(`Failed to claim XRD: ${error}`);
+      console.error("Error claiming XRD directly:", error);
+      throw new Error(`Failed to claim XRD directly: ${error}`);
     }
   }
 
   /**
-   * Helper method to extract stake unit address from validator info
+   * Find Stake Claims NFTs in the account
    *
-   * @param validatorInfo - Validator entity details
    * @param ownerAddress - Owner account address
-   * @returns Stake unit address or undefined
+   * @returns Stake Claims NFT resource address or undefined
    */
-  private extractStakeUnitAddress(
-    validatorInfo: any,
-    ownerAddress: string
-  ): string | undefined {
+  private async findStakeClaimsNFTs(ownerAddress: string): Promise<string | undefined> {
     try {
-      // This is a simplified implementation
-      // In a real scenario, we would parse the validator component state to extract the stake unit address
-
-      if (validatorInfo.items && validatorInfo.items.length > 0) {
-        const validatorData = validatorInfo.items[0];
-
-        if (validatorData.details?.state?.stake_unit_resource) {
-          return validatorData.details.state.stake_unit_resource;
-        }
-
-        // Fallback: look for resources associated with the validator
-        if (validatorData.details?.state?.resources) {
-          const resources = validatorData.details.state.resources;
-          if (resources.length > 0) {
-            // Typically, the stake unit resource would be one of the resources
-            // In a real implementation, we would identify it by its metadata or other properties
-            return resources[0].resource_address;
+      const accountBalances = await this.gatewayClient.getAccountBalances(ownerAddress);
+      
+      if (accountBalances?.items?.[0]?.non_fungible_resources?.items) {
+        const nfResources = accountBalances.items[0].non_fungible_resources.items;
+        
+        // Look for non-fungible resources that might be Stake Claims NFTs
+        for (const resource of nfResources) {
+          if (resource.resource_address && 
+              resource.vaults?.items?.[0]?.total_count && 
+              parseInt(resource.vaults.items[0].total_count) > 0) {
+            
+            // Check if this resource has characteristics of Stake Claims NFTs
+            // (look for "claim" or "unstake" related metadata)
+            if (resource.metadata?.items) {
+              const hasClaimMetadata = resource.metadata.items.some((item: any) => 
+                item.key?.toLowerCase().includes('claim') ||
+                item.key?.toLowerCase().includes('unstake') ||
+                item.value?.typed?.value?.toLowerCase().includes('claim') ||
+                item.value?.typed?.value?.toLowerCase().includes('unstake')
+              );
+              
+              if (hasClaimMetadata) {
+                console.log(`Found Stake Claims NFTs: ${resource.resource_address} with count: ${resource.vaults.items[0].total_count}`);
+                return resource.resource_address;
+              }
+            }
+            
+            // If no specific metadata, assume any NFT might be stake claims
+            // (this is a fallback for when metadata isn't descriptive enough)
+            console.log(`Found potential Stake Claims NFTs: ${resource.resource_address} with count: ${resource.vaults.items[0].total_count}`);
+            return resource.resource_address;
           }
         }
       }
-
+      
+      console.log('No Stake Claims NFTs found in account');
       return undefined;
     } catch (error) {
-      console.error("Error extracting stake unit address:", error);
+      console.warn('Could not get account balances for Stake Claims NFT discovery:', error);
       return undefined;
     }
   }
@@ -993,6 +1088,102 @@ export class DeFi {
       return { amount: "0" };
     } catch (error) {
       console.error("Error extracting claim data:", error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Helper method to extract stake unit address from validator info
+   *
+   * @param validatorInfo - Validator entity details
+   * @param ownerAddress - Owner account address
+   * @returns Stake unit address or undefined
+   */
+  private async extractStakeUnitAddress(
+    validatorInfo: any,
+    ownerAddress: string
+  ): Promise<string | undefined> {
+    try {
+      // Get the validator's stake unit resource address from validator details
+      let stakeUnitResourceAddress: string | undefined;
+      
+      if (validatorInfo.items && validatorInfo.items.length > 0) {
+        const validatorData = validatorInfo.items[0];
+        
+        // Try to find stake unit resource in validator metadata
+        if (validatorData.metadata?.items) {
+          for (const metadataItem of validatorData.metadata.items) {
+            if (metadataItem.key === 'stake_unit_resource' || 
+                metadataItem.key === 'stake_unit_resource_address') {
+              stakeUnitResourceAddress = metadataItem.value?.typed?.value;
+              break;
+            }
+          }
+        }
+        
+        // Fallback: look in validator state
+        if (!stakeUnitResourceAddress && validatorData.details?.state) {
+          const state = validatorData.details.state;
+          if (state.stake_unit_resource) {
+            stakeUnitResourceAddress = state.stake_unit_resource;
+          }
+        }
+      }
+      
+      if (!stakeUnitResourceAddress) {
+        // If we can't find it in validator data, get account balances 
+        // and look for any fungible resources that are NOT XRD
+        try {
+          const accountBalances = await this.gatewayClient.getAccountBalances(ownerAddress);
+          const xrdResourceAddress = this.transactionBuilder.getXRDResourceAddress();
+          
+          if (accountBalances?.items?.[0]?.fungible_resources?.items) {
+            const fungibleResources = accountBalances.items[0].fungible_resources.items;
+            
+            // Look for any fungible resource that is NOT XRD - these are likely stake units
+            for (const resource of fungibleResources) {
+              if (resource.resource_address && 
+                  resource.resource_address !== xrdResourceAddress &&
+                  resource.vaults?.items?.[0]?.amount && 
+                  parseFloat(resource.vaults.items[0].amount) > 0) {
+                
+                console.log(`Found potential stake unit resource: ${resource.resource_address} with amount: ${resource.vaults.items[0].amount}`);
+                stakeUnitResourceAddress = resource.resource_address;
+                break;
+              }
+            }
+          }
+          
+          // Also check non-fungible resources for stake units
+          if (!stakeUnitResourceAddress && accountBalances?.items?.[0]?.non_fungible_resources?.items) {
+            const nfResources = accountBalances.items[0].non_fungible_resources.items;
+            
+            // Look for any non-fungible resources that might be stake units
+            for (const resource of nfResources) {
+              if (resource.resource_address && 
+                  resource.vaults?.items?.[0]?.total_count && 
+                  parseInt(resource.vaults.items[0].total_count) > 0) {
+                
+                console.log(`Found potential NFT stake unit resource: ${resource.resource_address} with count: ${resource.vaults.items[0].total_count}`);
+                stakeUnitResourceAddress = resource.resource_address;
+                break;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Could not get account balances for stake unit discovery:', error);
+        }
+      }
+      
+      if (stakeUnitResourceAddress) {
+        console.log(`Using stake unit resource address: ${stakeUnitResourceAddress}`);
+      } else {
+        console.log('No stake unit resource address found');
+      }
+      
+      return stakeUnitResourceAddress;
+    } catch (error) {
+      console.error("Error extracting stake unit address:", error);
       return undefined;
     }
   }

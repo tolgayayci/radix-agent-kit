@@ -1,0 +1,366 @@
+---
+title: "FaucetHelper"
+description: "Testnet funding utilities and methods"
+---
+
+# FaucetHelper
+
+The `FaucetHelper` class provides automated testnet XRD funding capabilities for Stokenet wallets. It includes multiple funding methods with fallback strategies to ensure reliable wallet funding for development and testing.
+
+## Constructor
+
+```typescript
+constructor(networkId: RadixNetwork = RadixNetwork.Stokenet)
+```
+
+Creates a new FaucetHelper instance.
+
+**Parameters:**
+- `networkId` - Must be `RadixNetwork.Stokenet` (only testnet supported)
+
+**Example:**
+```typescript
+import { FaucetHelper, RadixNetwork } from "radix-agent-kit";
+
+const faucetHelper = new FaucetHelper(RadixNetwork.Stokenet);
+```
+
+<Warning>
+**Stokenet Only**: FaucetHelper only works with Stokenet testnet. Mainnet funding is not supported for security reasons.
+</Warning>
+
+## Core Funding Methods
+
+### autoFundNewWallet(wallet: RadixWallet, minimumAmount?: number): Promise\<boolean>
+
+Automatically fund a newly created wallet with testnet XRD.
+
+```typescript
+const wallet = RadixMnemonicWallet.generateRandom({ networkId: 2 });
+const funded = await faucetHelper.autoFundNewWallet(wallet, 100);
+
+if (funded) {
+  console.log("✅ Wallet successfully funded");
+} else {
+  console.log("❌ Funding failed");
+}
+```
+
+**Parameters:**
+- `wallet` - RadixWallet instance to fund
+- `minimumAmount` - Minimum XRD required (default: 100)
+
+**Returns:**
+- `Promise\<boolean>` - true if funding successful
+
+**Features:**
+- Validates wallet address format
+- Checks existing balance before funding
+- Tries multiple funding methods for reliability
+- Skips funding if wallet already has sufficient balance
+- Non-blocking operation with automatic retry
+
+### forceFundWallet(wallet: RadixWallet): Promise\<FundingResult>
+
+Force fund a wallet regardless of current balance.
+
+```typescript
+interface FundingResult {
+  success: boolean;
+  method: string;
+  error?: string;
+}
+
+const result = await faucetHelper.forceFundWallet(wallet);
+
+if (result.success) {
+  console.log(`✅ Funded using ${result.method}`);
+} else {
+  console.log(`❌ Funding failed: ${result.error}`);
+}
+```
+
+**Use cases:**
+- User explicitly requests funding
+- Testing scenarios requiring fresh funds
+- Wallet has insufficient balance for operations
+
+### fundWalletRobust(wallet: RadixWallet, amount?: number): Promise\<string>
+
+Enhanced funding method that tries multiple approaches.
+
+```typescript
+try {
+  const result = await faucetHelper.fundWalletRobust(wallet, 1000);
+  console.log("Funding result:", result); // 'submitted' or 'duplicate'
+} catch (error) {
+  console.error("All funding methods failed:", error.message);
+}
+```
+
+**Parameters:**
+- `wallet` - RadixWallet to fund
+- `amount` - Requested amount (default: 1000 XRD)
+
+**Returns:**
+- `Promise\<string>` - 'submitted', 'duplicate', or throws error
+
+## Individual Funding Methods
+
+### fundWalletWithFaucet(wallet: RadixWallet): Promise\<string>
+
+Fund using the official Radix Engine Toolkit faucet method.
+
+```typescript
+const result = await faucetHelper.fundWalletWithFaucet(wallet);
+console.log("Official faucet result:", result);
+```
+
+**Features:**
+- Uses `SimpleTransactionBuilder.freeXrdFromFaucet()`
+- Most reliable method
+- Recommended primary approach
+
+### fundWalletSimple(wallet: RadixWallet): Promise\<string>
+
+Simple fallback funding method.
+
+```typescript
+const result = await faucetHelper.fundWalletSimple(wallet);
+```
+
+### fundWalletWithFaucetFees(wallet: RadixWallet): Promise\<string>
+
+Alternative funding method using custom transaction building.
+
+```typescript
+const result = await faucetHelper.fundWalletWithFaucetFees(wallet);
+```
+
+**Features:**
+- Custom transaction manifest
+- 10 XRD locked fee
+- Fallback for when official method fails
+
+## Balance Operations
+
+### getXRDBalance(wallet: RadixWallet): Promise\<number>
+
+Get current XRD balance for a wallet.
+
+```typescript
+const balance = await faucetHelper.getXRDBalance(wallet);
+console.log(`Current balance: ${balance} XRD`);
+```
+
+**Returns:**
+- `Promise\<number>` - XRD balance as decimal number
+- Returns 0 for invalid/pending addresses
+- Returns 0 if account not found or indexed yet
+
+### hasMinimumBalance(wallet: RadixWallet, minimumAmount?: number): Promise\<boolean>
+
+Check if wallet has minimum required balance.
+
+```typescript
+const hasMinimum = await faucetHelper.hasMinimumBalance(wallet, 50);
+
+if (hasMinimum) {
+  console.log("✅ Wallet has sufficient balance");
+} else {
+  console.log("⚠️ Wallet needs funding");
+}
+```
+
+**Parameters:**
+- `wallet` - RadixWallet to check
+- `minimumAmount` - Required minimum (default: 100 XRD)
+
+### ensureMinimumBalance(wallet: RadixWallet, minimumAmount?: number, fundAmount?: number): Promise\<boolean>
+
+Ensure wallet has minimum balance, fund if necessary.
+
+```typescript
+const ensured = await faucetHelper.ensureMinimumBalance(
+  wallet,
+  100,  // minimum required
+  1000  // amount to fund if needed
+);
+
+if (ensured) {
+  console.log("✅ Wallet ready for operations");
+}
+```
+
+**Parameters:**
+- `wallet` - RadixWallet to check/fund
+- `minimumAmount` - Required minimum (default: 100 XRD)
+- `fundAmount` - Amount to fund if needed (default: 1000 XRD)
+
+**Workflow:**
+1. Check current balance
+2. If sufficient, return true
+3. If insufficient, attempt funding
+4. Wait and verify funding success
+
+## Constants
+
+### STOKENET_FAUCET_ADDRESS
+
+```typescript
+static readonly STOKENET_FAUCET_ADDRESS = 'component_tdx_2_1cptxxxxxxxxxfaucetxxxxxxxxx000527798379xxxxxxxxxyulkzl'
+```
+
+### STOKENET_XRD_ADDRESS
+
+```typescript
+static readonly STOKENET_XRD_ADDRESS = 'resource_tdx_2_1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxtfd2jc'
+```
+
+## Usage Examples
+
+### Basic Wallet Funding
+
+```typescript
+import { FaucetHelper, RadixMnemonicWallet, RadixNetwork } from "radix-agent-kit";
+
+// Create new wallet
+const wallet = RadixMnemonicWallet.generateRandom({
+  networkId: 2 // Stokenet
+});
+
+// Create faucet helper
+const faucet = new FaucetHelper(RadixNetwork.Stokenet);
+
+// Fund the wallet
+const funded = await faucet.autoFundNewWallet(wallet);
+
+if (funded) {
+  const balance = await faucet.getXRDBalance(wallet);
+  console.log(`✅ Wallet funded! Balance: ${balance} XRD`);
+}
+```
+
+### Robust Funding with Error Handling
+
+```typescript
+async function fundWalletSafely(wallet: RadixWallet): Promise\<boolean> {
+  const faucet = new FaucetHelper();
+  
+  try {
+    // Check current balance first
+    const currentBalance = await faucet.getXRDBalance(wallet);
+    console.log(`Current balance: ${currentBalance} XRD`);
+    
+    if (currentBalance >= 100) {
+      console.log("✅ Wallet already has sufficient funds");
+      return true;
+    }
+    
+    // Try robust funding
+    console.log("💰 Requesting testnet XRD...");
+    const result = await faucet.fundWalletRobust(wallet);
+    
+    if (result === 'submitted') {
+      console.log("✅ Funding transaction submitted");
+      
+      // Wait for transaction to process
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Verify funding
+      const newBalance = await faucet.getXRDBalance(wallet);
+      console.log(`New balance: ${newBalance} XRD`);
+      
+      return newBalance > currentBalance;
+    } else if (result === 'duplicate') {
+      console.log("ℹ️ Funding already in progress");
+      return true;
+    }
+    
+    return false;
+    
+  } catch (error) {
+    console.error("❌ Funding failed:", error.message);
+    return false;
+  }
+}
+```
+
+### Integration with RadixAgent
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY
+});
+
+// Get faucet helper from agent
+const faucet = agent.getFaucetHelper();
+
+// Fund agent's wallet
+const wallet = agent.getWallet();
+if (wallet) {
+  await faucet.forceFundWallet(wallet);
+}
+```
+
+### Conditional Funding
+
+```typescript
+async function ensureWalletReady(wallet: RadixWallet): Promise\<void> {
+  const faucet = new FaucetHelper();
+  
+  // Check if wallet needs funding
+  const needsFunding = !(await faucet.hasMinimumBalance(wallet, 50));
+  
+  if (needsFunding) {
+    console.log("💰 Wallet needs funding...");
+    
+    const success = await faucet.ensureMinimumBalance(wallet, 50, 500);
+    
+    if (success) {
+      console.log("✅ Wallet ready for operations");
+    } else {
+      throw new Error("Failed to fund wallet");
+    }
+  } else {
+    console.log("✅ Wallet already has sufficient balance");
+  }
+}
+```
+
+### Multiple Funding Attempts
+
+```typescript
+async function fundWithRetry(wallet: RadixWallet, maxAttempts = 3): Promise\<boolean> {
+  const faucet = new FaucetHelper();
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`💰 Funding attempt ${attempt}/${maxAttempts}...`);
+      
+      const result = await faucet.forceFundWallet(wallet);
+      
+      if (result.success) {
+        console.log(`✅ Funding successful on attempt ${attempt}`);
+        return true;
+      } else {
+        console.log(`⚠️ Attempt ${attempt} failed: ${result.error}`);
+      }
+      
+    } catch (error) {
+      console.log(`❌ Attempt ${attempt} error:`, error.message);
+    }
+    
+    // Wait before retry (except last attempt)
+    if (attempt < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  console.log("❌ All funding attempts failed");
+  return false;
+}
+```

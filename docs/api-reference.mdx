@@ -1,0 +1,166 @@
+---
+title: "API Reference"
+description: "Complete TypeScript API documentation for Radix Agent Kit"
+---
+
+# API Reference
+
+Complete TypeScript API documentation for all classes, interfaces, and utilities in Radix Agent Kit.
+
+## Core Classes
+
+### 🤖 AI Agent
+<Card title="RadixAgent" icon="robot" href="/api-reference/agent">
+  Main AI agent class with natural language blockchain interface
+</Card>
+
+### 🌐 Network & Gateway
+<Card title="RadixGatewayClient" icon="globe" href="/api-reference/gateway">
+  Gateway API client for Radix network communication
+</Card>
+
+### 🔧 Transaction Building
+<Card title="RadixTransactionBuilder" icon="tools" href="/api-reference/transaction-builder">
+  Low-level transaction construction and signing
+</Card>
+
+## Wallet Management
+
+<CardGroup cols={2}>
+  <Card title="RadixMnemonicWallet" icon="key" href="/api-reference/mnemonic-wallet">
+    24-word BIP-39 mnemonic wallet implementation
+  </Card>
+  <Card title="VaultWallet" icon="shield" href="/api-reference/vault-wallet">
+    Hardware wallet interface and support
+  </Card>
+  <Card title="RadixAccount" icon="user" href="/api-reference/account">
+    Account operations and management
+  </Card>
+  <Card title="RadixWallet Interface" icon="wallet" href="/api-reference/wallet-interface">
+    Base wallet interface and types
+  </Card>
+</CardGroup>
+
+## Blockchain Operations
+
+<CardGroup cols={2}>
+  <Card title="Token" icon="coins" href="/api-reference/token">
+    Token creation, minting, and transfer operations
+  </Card>
+  <Card title="DeFi" icon="chart-line" href="/api-reference/defi">
+    Staking, liquidity pools, and token swapping
+  </Card>
+  <Card title="Component" icon="code" href="/api-reference/component">
+    Smart contract interactions and state queries
+  </Card>
+  <Card title="Tools" icon="robot" href="/api-reference/tools">
+    All 16 AI tools for blockchain operations
+  </Card>
+</CardGroup>
+
+## Security & Utilities
+
+<CardGroup cols={2}>
+  <Card title="TransactionSecurity" icon="shield-check" href="/api-reference/security">
+    Transaction validation and rate limiting
+  </Card>
+  <Card title="SecureKeyStorage" icon="lock" href="/api-reference/key-storage">
+    Encrypted storage for sensitive data
+  </Card>
+  <Card title="FaucetHelper" icon="droplet" href="/api-reference/faucet">
+    Testnet funding utilities and methods
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+### Installation
+```bash
+npm install radix-agent-kit
+```
+
+### Basic Usage
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC
+});
+
+await agent.run("What's my XRD balance?");
+```
+
+### Direct API Usage
+```typescript
+import { 
+  RadixGatewayClient,
+  RadixMnemonicWallet,
+  Token,
+  DeFi 
+} from "radix-agent-kit";
+
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+const wallet = RadixMnemonicWallet.fromMnemonic(mnemonic, {
+  networkId: 2
+});
+```
+
+## Type Definitions
+
+### Networks
+```typescript
+enum RadixNetwork {
+  Mainnet = 'mainnet',
+  Stokenet = 'stokenet'
+}
+```
+
+### Common Types
+```typescript
+interface WalletConfig {
+  networkId: number;
+  applicationName?: string;
+  accountIndex?: number;
+}
+
+interface TransferOptions {
+  fromAccount: string;
+  toAccount: string;
+  resourceAddress: string;
+  amount: string;
+}
+```
+
+## Error Handling
+
+All API methods follow consistent error handling patterns:
+
+```typescript
+try {
+  const result = await api.method(params);
+  // Handle success
+} catch (error) {
+  if (error instanceof RadixError) {
+    // Handle specific Radix errors
+  }
+  // Handle general errors
+}
+```
+
+## Network Support
+
+| Network | NetworkId | Gateway URL |
+|---------|-----------|-------------|
+| **Stokenet** | `2` | `https://stokenet.radixdlt.com` |
+| **Mainnet** | `1` | `https://mainnet.radixdlt.com` |
+
+---
+
+<Note>
+**TypeScript Support**: All classes and methods include full TypeScript type definitions for enhanced developer experience.
+</Note> 

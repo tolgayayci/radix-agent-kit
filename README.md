@@ -21,6 +21,18 @@ Get up and running in seconds! Click the button above to try Radix Agent Kit in 
 npm install radix-agent-kit
 ```
 
+### Environment Setup
+
+Create a `.env` file:
+
+```bash
+# Required for AI features
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional: Use existing wallet (leave empty to auto-generate)
+RADIX_MNEMONIC=your_24_word_mnemonic_phrase_here
+```
+
 ### Basic AI Agent
 
 ```typescript
@@ -31,275 +43,240 @@ const agent = new RadixAgent({
   openaiApiKey: process.env.OPENAI_API_KEY
 });
 
-// Generate new wallet (starts with 0 XRD - fund before use)
+// Generate new wallet automatically
 const { wallet, mnemonic } = agent.generateNewWallet();
-console.log("Address:", wallet.getAddress());
-console.log("Save this mnemonic:", mnemonic);
+console.log("💰 New Address:", wallet.getAddress());
+console.log("🔑 Save this mnemonic:", mnemonic);
+console.log("💡 Fund your wallet: https://stokenet-dashboard.radixdlt.com/");
 
 // Natural language blockchain interactions
-const response = await agent.run("What's my XRD balance?");
-console.log(response);
-```
-
-### Direct API Usage
-
-Skip AI and use blockchain functions directly:
-
-```typescript
-import { 
-  RadixGatewayClient, 
-  RadixMnemonicWallet,
-  RadixTransactionBuilder,
-  Token,
-  DeFi,
-  RadixNetwork
-} from "radix-agent-kit";
-
-// Setup core components
-const gateway = new RadixGatewayClient({ networkId: RadixNetwork.Stokenet });
-const wallet = RadixMnemonicWallet.fromMnemonic("your twelve word mnemonic", {
-  networkId: RadixNetwork.Stokenet
-});
-const txBuilder = new RadixTransactionBuilder({ networkId: RadixNetwork.Stokenet });
-
-// Check balance
-const balances = await gateway.getAccountBalances(wallet.getAddress());
-console.log("Balances:", balances);
-
-// Create token directly
-const token = new Token(txBuilder, gateway, RadixNetwork.Stokenet);
-const txHash = await token.createFungibleToken({
-  name: "MyToken",
-  symbol: "MTK",
-  initialSupply: "1000000"
-}, wallet);
-```
-
-## 🎯 Core Features
-
-### 🤖 AI-Powered Agent
-- **Natural Language Interface** - Talk to your blockchain like ChatGPT
-- **8 Specialized Tools** - Built-in LangChain tools for all operations
-- **Memory Support** - Context-aware conversations
-- **Error Handling** - Smart error recovery and suggestions
-
-### 💰 Account Operations
-```typescript
-// Check balances and account info
+await agent.run("What's my XRD balance?");
 await agent.run("What's my account information?");
-await agent.run("Show me all my token balances");
-await agent.run("What's my account address?");
 ```
 
-### 💸 Token Operations
-```typescript
-// Send XRD and tokens
-await agent.run("Send 100 XRD to account_tdx_2_12x...");
-await agent.run("Transfer 50 MyToken to Alice");
+## 🔧 Agent Creation Options
 
-// Create new tokens
-await agent.run("Create a token called GameCoin with 1M supply");
-await agent.run("Create an NFT collection called CryptoPunks");
+### Option 1: Auto-Generated Wallet (Recommended for testing)
+
+```typescript
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  applicationName: "MyApp",          // Optional: For Gateway API
+  model: "gpt-4",                    // Optional: Default is gpt-3.5-turbo
+  temperature: 0.1,                  // Optional: Default is 0
+  useMemory: true,                   // Optional: Enable conversation memory
+  verbose: true,                     // Optional: Enable detailed logging
+  maxIterations: 10                  // Optional: Max agent thinking steps
+});
+
+// Generate wallet on demand
+const { wallet, mnemonic } = agent.generateNewWallet();
 ```
 
-### 🏊‍♂️ DeFi Operations
+### Option 2: Existing Mnemonic
+
 ```typescript
-// Liquidity pools and swapping
-await agent.run("Create a liquidity pool with 1000 XRD and 500 MyToken");
-await agent.run("Swap 50 XRD for MyToken");
-await agent.run("Add 100 XRD to the XRD/MyToken pool");
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC,  // Your 24-word phrase
+  useMemory: true,                       // Remember conversation context
+  skipAutoFunding: true                  // Skip automatic testnet funding
+});
 ```
 
-### 🥩 Staking Operations
-```typescript
-// Stake with validators
-await agent.run("Stake 100 XRD with the best validator");
-await agent.run("Show me all validators");
-await agent.run("Unstake 50 XRD from my current validator");
-```
-
-### 🔧 Smart Contract Interaction
-```typescript
-// Call any component method
-await agent.run("Call the get_price method on component_tdx_2_1c...");
-await agent.run("Interact with the DEX component to get pool info");
-```
-
-## 📚 Comprehensive Examples
-
-### Portfolio Manager Agent
+### Option 3: Pre-created Wallet
 
 ```typescript
-import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+import { RadixMnemonicWallet } from "radix-agent-kit";
 
-class PortfolioAgent {
-  constructor(private agent: RadixAgent) {}
-  
-  async getDashboard() {
-    const balance = await this.agent.run("What's my XRD balance?");
-    const tokens = await this.agent.run("What tokens do I own?");
-    const stakes = await this.agent.run("Show my staking positions");
-    
-    return { balance, tokens, stakes };
-  }
-  
-  async rebalancePortfolio(targets: Record<string, number>) {
-    for (const [token, percentage] of Object.entries(targets)) {
-      await this.agent.run(`Rebalance to ${percentage}% ${token}`);
-    }
-  }
-}
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  "abandon abandon abandon...",  // Your mnemonic
+  { networkId: RadixNetwork.Stokenet }
+);
 
 const agent = new RadixAgent({
   networkId: RadixNetwork.Stokenet,
   openaiApiKey: process.env.OPENAI_API_KEY,
-  mnemonic: process.env.RADIX_MNEMONIC
-});
-
-const portfolio = new PortfolioAgent(agent);
-const dashboard = await portfolio.getDashboard();
-```
-
-### Token Creator Bot
-
-```typescript
-class TokenCreator {
-  constructor(private agent: RadixAgent) {}
-  
-  async createGameToken(gameData: any) {
-    const result = await this.agent.run(
-      `Create a gaming token called ${gameData.name} with symbol ${gameData.symbol} 
-       and ${gameData.supply} initial supply for game rewards`
-    );
-    return result;
-  }
-  
-  async createNFTCollection(collectionData: any) {
-    const result = await this.agent.run(
-      `Create an NFT collection called ${collectionData.name} 
-       with description "${collectionData.description}"`
-    );
-    return result;
-  }
-}
-
-const creator = new TokenCreator(agent);
-await creator.createGameToken({
-  name: "BattleCoins",
-  symbol: "BATTLE",
-  supply: "10000000"
+  wallet: wallet
 });
 ```
 
-### DeFi Yield Farmer
+### Option 4: Custom Tools & Configuration
 
 ```typescript
-class YieldFarmer {
-  constructor(private agent: RadixAgent) {}
-  
-  async findBestPools() {
-    return await this.agent.run("Show me all available liquidity pools with their APY");
-  }
-  
-  async enterPosition(pool: string, amount: string) {
-    return await this.agent.run(`Add ${amount} XRD to the ${pool} pool`);
-  }
-  
-  async harvest() {
-    return await this.agent.run("Claim all my DeFi rewards");
-  }
-  
-  async exitPosition(pool: string, percentage: number) {
-    return await this.agent.run(`Remove ${percentage}% of my liquidity from ${pool}`);
-  }
-}
+import { createDefaultRadixTools, RadixTool } from "radix-agent-kit";
 
-const farmer = new YieldFarmer(agent);
-const bestPools = await farmer.findBestPools();
-await farmer.enterPosition("XRD/USDT", "1000");
-```
-
-### Trading Bot
-
-```typescript
-class TradingBot {
-  constructor(private agent: RadixAgent) {}
-  
-  async executeStrategy(signals: any[]) {
-    for (const signal of signals) {
-      if (signal.action === 'buy') {
-        await this.agent.run(`Swap ${signal.amount} XRD for ${signal.token}`);
-      } else if (signal.action === 'sell') {
-        await this.agent.run(`Swap ${signal.amount} ${signal.token} for XRD`);
-      }
+// Create custom tool
+const customTool = new DynamicStructuredTool({
+  name: "check_price",
+  description: "Check token price",
+  schema: z.object({
+    token: z.string().describe("Token symbol")
+  }),
+  func: async ({ token }) => {
+    return `Price of ${token}: $1.23`;
     }
-  }
-  
-  async setStopLoss(token: string, price: number) {
-    // Implementation would involve monitoring and conditional execution
-    await this.agent.run(`Set alert for ${token} if price drops below ${price}`);
-  }
-}
+});
+
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC,
+  customTools: [customTool],         // Add your tools
+  useMemory: true,
+  verbose: true
+});
 ```
 
-### Multi-Agent System
+## 🎯 AI Agent Examples
+
+### Account Operations
 
 ```typescript
-class RadixMultiAgent {
-  private agents: Map<string, RadixAgent> = new Map();
-  
-  constructor(private config: any) {
-    // Create specialized agents
-    this.agents.set('trader', new RadixAgent({...config, applicationName: 'Trader'}));
-    this.agents.set('farmer', new RadixAgent({...config, applicationName: 'Farmer'}));
-    this.agents.set('creator', new RadixAgent({...config, applicationName: 'Creator'}));
-  }
-  
-  async executeTask(type: string, instruction: string) {
-    const agent = this.agents.get(type);
-    if (!agent) throw new Error(`Unknown agent type: ${type}`);
-    
-    return await agent.run(instruction);
-  }
-  
-  async coordinatedAction(tasks: Array<{type: string, instruction: string}>) {
-    const results = await Promise.all(
-      tasks.map(task => this.executeTask(task.type, task.instruction))
-    );
-    return results;
-  }
-}
-
-const multiAgent = new RadixMultiAgent(config);
-await multiAgent.coordinatedAction([
-  { type: 'creator', instruction: 'Create a new gaming token' },
-  { type: 'farmer', instruction: 'Add liquidity to the new token pool' },
-  { type: 'trader', instruction: 'Set up automated trading for the token' }
-]);
+// Check account details
+await agent.run("What's my account information?");
+await agent.run("Show me my account address");
+await agent.run("What's my XRD balance?");
+await agent.run("List all my token balances");
+await agent.run("Do I have any NFTs?");
 ```
 
-## 🔧 Available Tools
+### Token Transfers
 
-The AI agent comes with 8 specialized tools for blockchain operations:
+```typescript
+// Send XRD
+await agent.run("Send 100 XRD to account_tdx_2_12x...");
+await agent.run("Transfer 50.5 XRD to Alice's wallet");
+
+// Send custom tokens
+await agent.run("Send 1000 GameCoin to account_tdx_2_12x...");
+await agent.run("Transfer all my USDT to Bob");
+```
+
+### Token Creation
+
+```typescript
+// Create fungible tokens
+await agent.run("Create a token called GameCoin with symbol GAME and 1M supply");
+await agent.run("Create a stablecoin called MyUSD with 18 decimals");
+await agent.run("Make a meme token called DogeCoin2 with 1B total supply");
+
+// Create NFT collections
+await agent.run("Create an NFT collection called CryptoPunks");
+await agent.run("Create NFTs for my art collection with description 'Digital Art Pieces'");
+```
+
+### Token Minting
+
+```typescript
+// Mint more tokens (if you own the resource)
+await agent.run("Mint 10000 more GameCoin tokens");
+await agent.run("Create 5 new NFTs in my art collection");
+await agent.run("Mint 1 NFT with data: name=Punk1, description=Cool punk, image=https://...");
+```
+
+### Staking Operations
+
+```typescript
+// Validator staking
+await agent.run("Stake 100 XRD with the best validator");
+await agent.run("Show me all available validators");
+await agent.run("Unstake 50 XRD from my current stake");
+await agent.run("Claim my staking rewards");
+await agent.run("What are my current staking positions?");
+```
+
+### DeFi Operations
+
+```typescript
+// Liquidity pools
+await agent.run("Add 1000 XRD and 500 USDT to a liquidity pool");
+await agent.run("Create a new liquidity pool with 100 XRD and 200 GameCoin");
+await agent.run("Show me available liquidity pools");
+
+// Token swapping
+await agent.run("Swap 50 XRD for USDT");
+await agent.run("Exchange 100 GameCoin for XRD");
+await agent.run("Get the best rate for swapping 1000 XRD to USDT");
+```
+
+### Smart Contract Interaction
+
+```typescript
+// Component method calls
+await agent.run("Call the get_price method on component_tdx_2_1c...");
+await agent.run("Get the state of component_tdx_2_1c...");
+await agent.run("Call swap_tokens on the DEX with 100 XRD");
+await agent.run("Interact with component_tdx_2_1c... to check pool liquidity");
+```
+
+### Utility Operations
+
+```typescript
+// Network information
+await agent.run("What's the current epoch?");
+await agent.run("Fund my Stokenet wallet from the faucet");
+await agent.run("Show me the current network status");
+```
+
+## 🛠️ All Available Tools (16 Total)
+
+The AI agent comes with **16 specialized tools** for comprehensive blockchain operations:
+
+### 🏦 Account & Wallet Management (3 tools)
 
 | Tool | Description | Example Usage |
 |------|-------------|---------------|
-| **GetAccountInfoTool** | Account details and metadata | `"What's my account information?"` |
-| **GetBalancesTool** | Token balances and holdings | `"Show me all my balances"` |
-| **TransferTokensTool** | Send XRD and custom tokens | `"Send 100 XRD to Alice"` |
-| **CreateFungibleResourceTool** | Create new tokens | `"Create a token called GameCoin"` |
-| **CreateNonFungibleResourceTool** | Create NFT collections | `"Create an NFT collection"` |
-| **StakeXRDTool** | Stake with validators | `"Stake 100 XRD with the best validator"` |
-| **AddLiquidityTool** | Add liquidity to pools | `"Add liquidity to XRD/USDT pool"` |
-| **SwapTokensTool** | Token swapping | `"Swap 50 XRD for MyToken"` |
-| **CallComponentMethodTool** | Smart contract interaction | `"Call get_price on component_tdx..."` |
+| **get_account_info** | Get account details and metadata | `"What's my account information?"` |
+| **get_balances** | Check all token balances | `"Show me all my balances"` |
+| **fund_stokenet_wallet** | Auto-fund testnet wallet | `"Fund my wallet from faucet"` |
+
+### 💸 Token Operations (5 tools)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| **transfer_tokens** | Send XRD and custom tokens | `"Send 100 XRD to Alice"` |
+| **create_fungible_resource** | Create new tokens | `"Create a token called GameCoin"` |
+| **create_non_fungible_resource** | Create NFT collections | `"Create an NFT collection"` |
+| **mint_fungible_resource** | Mint more tokens | `"Mint 1000 more GameCoin"` |
+| **mint_non_fungible_resource** | Mint new NFTs | `"Create 5 new NFTs"` |
+
+### 🥩 Validator Operations (3 tools)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| **stake_xrd** | Stake with validators | `"Stake 100 XRD with best validator"` |
+| **unstake_xrd** | Unstake from validators | `"Unstake 50 XRD"` |
+| **claim_xrd** | Claim staking rewards | `"Claim my staking rewards"` |
+
+### 🌊 DeFi Operations (2 tools)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| **add_liquidity** | Add liquidity to pools | `"Add 1000 XRD to XRD/USDT pool"` |
+| **swap_tokens** | Swap between tokens | `"Swap 50 XRD for USDT"` |
+
+### 🔧 Component Interaction (2 tools)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| **call_component_method** | Call smart contract methods | `"Call get_price on component_tdx..."` |
+| **get_component_state** | Get component state | `"Get state of component_tdx..."` |
+
+### ⚡ Utility Tools (1 tool)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| **get_epoch** | Get current network epoch | `"What's the current epoch?"` |
 
 ## 🌐 Networks
 
 ### Stokenet (Testnet) - **Start Here**
 ```typescript
 const agent = new RadixAgent({
-  networkId: RadixNetwork.Stokenet,
+  networkId: RadixNetwork.Stokenet,  // networkId: 2
   // ... other config
 });
 ```
@@ -311,7 +288,7 @@ const agent = new RadixAgent({
 ### Mainnet (Production)
 ```typescript
 const agent = new RadixAgent({
-  networkId: RadixNetwork.Mainnet,
+  networkId: RadixNetwork.Mainnet,  // networkId: 1
   // ... other config
 });
 ```
@@ -320,20 +297,78 @@ const agent = new RadixAgent({
 - **Use only after thorough testing on Stokenet**
 - **Start with small amounts**
 
-## ⚠️ Important Security Notes
+## 💻 Direct API Usage
 
-### Wallet Funding
+Skip AI and use blockchain functions directly:
+
+```typescript
+import { 
+  RadixGatewayClient, 
+  RadixMnemonicWallet,
+  RadixTransactionBuilder,
+  Token,
+  DeFi,
+  Component,
+  RadixNetwork
+} from "radix-agent-kit";
+
+// Setup core components
+const gateway = new RadixGatewayClient({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+const wallet = RadixMnemonicWallet.fromMnemonic(
+  process.env.RADIX_MNEMONIC!,
+  { networkId: RadixNetwork.Stokenet }
+);
+
+const txBuilder = new RadixTransactionBuilder({ 
+  networkId: RadixNetwork.Stokenet 
+});
+
+// Check balance directly
+const balances = await gateway.getAccountBalances(wallet.getAddress());
+console.log("Balances:", balances);
+
+// Create token directly
+const token = new Token(txBuilder, gateway, RadixNetwork.Stokenet);
+const txHash = await token.createFungibleResource({
+  name: "MyToken",
+  symbol: "MTK",
+  initialSupply: "1000000"
+}, wallet, await gateway.getCurrentEpoch());
+
+console.log("Token created:", txHash);
+
+// DeFi operations
+const defi = new DeFi(txBuilder, gateway, RadixNetwork.Stokenet);
+const stakeTxHash = await defi.stakeXRD({
+  accountAddress: wallet.getAddress(),
+  validatorAddress: "validator_tdx_2_1sd5368...",
+  amount: "100"
+}, wallet, await gateway.getCurrentEpoch());
+
+console.log("Staked XRD:", stakeTxHash);
+```
+
+## ⚠️ Important Notes
+
+### 💰 Wallet Funding
+
 ```typescript
 // ❌ New wallets start with ZERO balance!
 const { wallet, mnemonic } = agent.generateNewWallet();
+console.log("Address:", wallet.getAddress());
 // This wallet has 0 XRD and can't perform transactions
 
 // ✅ Always fund new wallets before use
 console.log("Fund this address:", wallet.getAddress());
-// Get testnet XRD from Dashboard or Discord faucets
+// Get testnet XRD from: https://stokenet-dashboard.radixdlt.com/
+// Or use: await agent.run("Fund my wallet from faucet");
 ```
 
-### Private Key Security
+### 🔐 Private Key Security
+
 ```typescript
 // ❌ Never hardcode mnemonics
 const agent = new RadixAgent({
@@ -347,51 +382,22 @@ const agent = new RadixAgent({
 });
 ```
 
-### Safe Development Practices
+### 🧪 Safe Development
+
 ```typescript
 // ✅ Always start with testnet
-if (process.env.NODE_ENV === 'production') {
-  // Extra validation for mainnet
-  if (!process.env.CONFIRMED_MAINNET) {
-    throw new Error("Set CONFIRMED_MAINNET=true to use mainnet");
-  }
-}
-
 const networkId = process.env.NODE_ENV === 'production' 
   ? RadixNetwork.Mainnet 
   : RadixNetwork.Stokenet;
+
+const agent = new RadixAgent({
+  networkId: networkId,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  mnemonic: process.env.RADIX_MNEMONIC
+});
 ```
 
 ## 🛠️ Advanced Usage
-
-### Custom Tool Creation
-
-```typescript
-import { RadixTool } from "radix-agent-kit";
-
-class PriceCheckerTool extends RadixTool {
-  name = "check_token_price";
-  description = "Check current price of any token";
-  
-  async _call(input: string): Promise<string> {
-    // Your custom price checking logic
-    const price = await this.fetchTokenPrice(input);
-    return `Current price of ${input}: $${price}`;
-  }
-  
-  private async fetchTokenPrice(token: string): Promise<number> {
-    // Implementation
-    return 1.23;
-  }
-}
-
-// Add to agent
-const priceChecker = new PriceCheckerTool(gateway, builder, wallet, networkId);
-agent.addTool(priceChecker);
-
-// Use in conversation
-const response = await agent.run("Check price of MyToken");
-```
 
 ### Error Handling
 
@@ -400,11 +406,11 @@ try {
   const result = await agent.run("Send 1000000 XRD to invalid_address");
 } catch (error) {
   if (error.message.includes("Insufficient funds")) {
-    console.log("Not enough XRD for this transaction");
+    console.log("💸 Not enough XRD for this transaction");
   } else if (error.message.includes("Invalid address")) {
-    console.log("Please provide a valid Radix address");
+    console.log("📍 Please provide a valid Radix address");
   } else {
-    console.log("Transaction failed:", error.message);
+    console.log("❌ Transaction failed:", error.message);
   }
 }
 ```
@@ -414,40 +420,78 @@ try {
 ```typescript
 // Execute multiple operations in sequence
 const operations = [
+  "What's my current XRD balance?",
   "Create a token called BatchToken with 1M supply",
   "Create an NFT collection called BatchNFTs", 
   "Stake 100 XRD with the highest APY validator"
 ];
 
+const results = [];
 for (const operation of operations) {
   try {
     const result = await agent.run(operation);
+    results.push({ operation, success: true, result });
     console.log(`✅ ${operation}: ${result}`);
   } catch (error) {
+    results.push({ operation, success: false, error: error.message });
     console.log(`❌ ${operation}: ${error.message}`);
   }
 }
+
+console.log("Batch results:", results);
+```
+
+### Custom Tools
+
+```typescript
+import { DynamicStructuredTool } from "@langchain/core/tools";
+import { z } from "zod";
+
+// Create a price checking tool
+const priceChecker = new DynamicStructuredTool({
+  name: "check_token_price",
+  description: "Check current price of any token on Radix",
+  schema: z.object({
+    token: z.string().describe("Token symbol or address"),
+  }),
+  func: async ({ token }) => {
+    // Your price fetching logic here
+    const price = await fetchTokenPrice(token);
+    return `Current price of ${token}: $${price}`;
+  }
+});
+
+// Add to agent
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  customTools: [priceChecker]
+});
+
+// Use in conversation
+const response = await agent.run("Check the price of GameCoin");
 ```
 
 ## 📖 Complete Documentation
 
-**📚 [docs.radixagent.com](https://docs.radixagent.com)** - Complete guides and API reference
+**📚 [Full Documentation](https://docs.radixagent.com)** - Complete guides and API reference
 
-- **[Quickstart Guide](https://docs.radixagent.com/quickstart)** - Get running in 5 minutes
-- **[Feature Overview](https://docs.radixagent.com/features)** - All capabilities explained
-- **[API Reference](https://docs.radixagent.com/api/overview)** - Complete API documentation
-- **[Security Guide](https://docs.radixagent.com/security)** - Best practices and security
-- **[Examples Gallery](https://docs.radixagent.com/examples)** - Real-world implementations
+### 📘 User Guides
+- **[Introduction](https://docs.radixagent.com/introduction)** - Overview and core concepts
+- **[Quick Start](https://docs.radixagent.com/quickstart)** - Get running in 5 minutes  
+- **[Features](https://docs.radixagent.com/features)** - All 16 tools and capabilities
+- **[AI Tools](https://docs.radixagent.com/tools)** - Detailed tool documentation
+- **[Security](https://docs.radixagent.com/security)** - Wallet management and best practices
 
-## 🚀 Example Projects
-
-### Built with Radix Agent Kit
-
-- **Discord Bot** - AI agent for Discord servers ([example](./examples/discord-bot))
-- **Telegram Bot** - Blockchain operations via Telegram ([example](./examples/telegram-bot))
-- **Portfolio Tracker** - NextJS app with AI agent ([example](./examples/nextjs-app))
-- **Trading Bot** - Automated DeFi trading strategies
-- **NFT Minter** - AI-powered NFT collection creator
+### 📗 API Reference
+- **[Overview](https://docs.radixagent.com/api-reference)** - Complete API documentation
+- **[RadixAgent](https://docs.radixagent.com/api-reference/agent)** - Main AI agent class
+- **[RadixGatewayClient](https://docs.radixagent.com/api-reference/gateway)** - Gateway API client
+- **[RadixMnemonicWallet](https://docs.radixagent.com/api-reference/mnemonic-wallet)** - Wallet management
+- **[Token Operations](https://docs.radixagent.com/api-reference/token)** - Token creation and transfers
+- **[DeFi Operations](https://docs.radixagent.com/api-reference/defi)** - Staking and liquidity
+- **[Security Classes](https://docs.radixagent.com/api-reference/security)** - Transaction validation
+- **[FaucetHelper](https://docs.radixagent.com/api-reference/faucet)** - Testnet funding utilities
 
 ## 🔗 Key Dependencies
 

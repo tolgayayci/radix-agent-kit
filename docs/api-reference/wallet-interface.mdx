@@ -1,0 +1,398 @@
+---
+title: "RadixWallet Interface"
+description: "Base wallet interface and types"
+---
+
+# RadixWallet Interface
+
+The `RadixWallet` interface defines the standard contract for all wallet implementations in Radix Agent Kit. It provides a unified API for wallet operations across different wallet types.
+
+## Interface Definition
+
+```typescript
+interface RadixWallet {
+  getAddress(): string;
+  getPublicKey(): string;
+  getPrivateKeyHex(): string;
+  sign(data: Uint8Array): Promise\<string>;
+  signTransaction(transactionIntent: any): Promise\<any>;
+}
+```
+
+## Core Methods
+
+### getAddress(): string
+
+Get the current account's Radix address.
+
+```typescript
+const address = wallet.getAddress();
+console.log("Wallet address:", address);
+// Example: account_tdx_2_1c8atrq...
+```
+
+**Returns:**
+- `string` - Radix account address for current network
+
+### getPublicKey(): string
+
+Get the current account's public key as hex string.
+
+```typescript
+const publicKey = wallet.getPublicKey();
+console.log("Public key:", publicKey);
+// Example: 32-byte hex string
+```
+
+**Returns:**
+- `string` - Ed25519 public key as hex
+
+### getPrivateKeyHex(): string
+
+Get the current account's private key as hex string.
+
+```typescript
+const privateKey = wallet.getPrivateKeyHex();
+// ⚠️ Keep this secure! Never log or expose
+```
+
+**Returns:**
+- `string` - Ed25519 private key as hex
+
+<Warning>
+**Security**: Private keys should never be logged, exposed, or transmitted. Use only for signing operations.
+</Warning>
+
+### sign(data: Uint8Array): Promise\<string>
+
+Sign arbitrary data with the wallet's private key.
+
+```typescript
+const data = new TextEncoder().encode("Hello Radix");
+const signature = await wallet.sign(data);
+console.log("Signature:", signature);
+```
+
+**Parameters:**
+- `data` - Data to sign as Uint8Array
+
+**Returns:**
+- `Promise\<string>` - Ed25519 signature as hex string
+
+### signTransaction(transactionIntent: any): Promise\<any>
+
+Sign a transaction intent for submission to the network.
+
+```typescript
+const signedTransaction = await wallet.signTransaction(transactionIntent);
+```
+
+**Parameters:**
+- `transactionIntent` - Transaction intent object
+
+**Returns:**
+- `Promise\<any>` - Signed transaction object
+
+## Wallet Implementations
+
+### RadixMnemonicWallet
+
+Mnemonic-based wallet implementation for development and testing.
+
+```typescript
+import { RadixMnemonicWallet } from "radix-agent-kit";
+
+const wallet: RadixWallet = RadixMnemonicWallet.generateRandom({
+  networkId: 2
+});
+
+console.log("Address:", wallet.getAddress());
+```
+
+**Features:**
+- 24-word BIP-39 mnemonic support
+- Multiple account derivation
+- Auto-funding on Stokenet
+- Ed25519 cryptography
+
+### VaultWallet
+
+Hardware wallet implementation for production use.
+
+```typescript
+import { VaultWallet } from "radix-agent-kit";
+
+const wallet: RadixWallet = new VaultWallet({
+  networkId: 2,
+  vaultPath: "./secure-vault",
+  encryptionKey: process.env.VAULT_KEY
+});
+
+console.log("Secure address:", wallet.getAddress());
+```
+
+**Features:**
+- Hardware security module support
+- Encrypted key storage
+- Production-ready security
+- HSM integration
+
+## Type Definitions
+
+### HardwareWallet
+
+Extended interface for hardware wallet capabilities.
+
+```typescript
+interface HardwareWallet extends RadixWallet {
+  isConnected(): boolean;
+  connect(): Promise\<void>;
+  disconnect(): Promise\<void>;
+  getDeviceInfo(): Promise\<DeviceInfo>;
+}
+```
+
+### SignableTransactionIntent
+
+Transaction intent structure for signing.
+
+```typescript
+interface SignableTransactionIntent {
+  intentHash: string;
+  payloadBytes: Uint8Array;
+}
+```
+
+### SignedTransaction
+
+Signed transaction structure.
+
+```typescript
+interface SignedTransaction {
+  intentHash: string;
+  signature: string;
+  publicKey: string;
+  compiledTransaction: string;
+  intentPayload: Uint8Array;
+  signatures: string[];
+}
+```
+
+## Usage Patterns
+
+### Wallet Factory Pattern
+
+Create wallets using factory functions:
+
+```typescript
+import { RadixMnemonicWallet, VaultWallet } from "radix-agent-kit";
+
+function createWallet(type: 'mnemonic' | 'vault', config: any): RadixWallet {
+  switch (type) {
+    case 'mnemonic':
+      return RadixMnemonicWallet.fromMnemonic(config.mnemonic, config);
+    case 'vault':
+      return new VaultWallet(config);
+    default:
+      throw new Error(`Unknown wallet type: ${type}`);
+  }
+}
+
+const wallet = createWallet('mnemonic', {
+  mnemonic: process.env.RADIX_MNEMONIC,
+  networkId: 2
+});
+```
+
+### Wallet Abstraction
+
+Use interface for wallet-agnostic code:
+
+```typescript
+async function performOperation(wallet: RadixWallet): Promise\<string> {
+  // Works with any wallet implementation
+  const address = wallet.getAddress();
+  const data = new TextEncoder().encode(`Operation for ${address}`);
+  const signature = await wallet.sign(data);
+  
+  return signature;
+}
+
+// Works with any wallet type
+const mnemonicWallet = RadixMnemonicWallet.generateRandom({ networkId: 2 });
+const vaultWallet = new VaultWallet({ networkId: 2, vaultPath: "./vault" });
+
+const sig1 = await performOperation(mnemonicWallet);
+const sig2 = await performOperation(vaultWallet);
+```
+
+### Wallet Validation
+
+Validate wallet capabilities:
+
+```typescript
+function validateWallet(wallet: RadixWallet): boolean {
+  try {
+    // Check if wallet has valid address
+    const address = wallet.getAddress();
+    if (!address || !address.startsWith('account_')) {
+      return false;
+    }
+    
+    // Check if wallet has public key
+    const publicKey = wallet.getPublicKey();
+    if (!publicKey || publicKey.length !== 64) { // 32 bytes = 64 hex chars
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+const isValid = validateWallet(wallet);
+console.log("Wallet valid:", isValid);
+```
+
+## Integration Examples
+
+### With RadixAgent
+
+```typescript
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
+// Any RadixWallet implementation works
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  wallet: wallet // RadixWallet interface
+});
+
+await agent.run("What's my balance?");
+```
+
+### With Transaction Builder
+
+```typescript
+import { RadixTransactionBuilder } from "radix-agent-kit";
+
+const builder = new RadixTransactionBuilder({
+  networkId: RadixNetwork.Stokenet
+});
+
+// Create transaction manifest
+const manifest = builder.createTransferManifest(
+  wallet.getAddress(),
+  targetAddress,
+  builder.getXRDResourceAddress(),
+  "100"
+);
+
+// Sign with any wallet implementation
+const privateKey = RadixTransactionBuilder.createPrivateKeyFromHex(
+  wallet.getPrivateKeyHex()
+);
+
+const result = await builder.buildCustomManifestTransaction(
+  manifest,
+  privateKey,
+  currentEpoch
+);
+```
+
+### With Gateway Client
+
+```typescript
+import { RadixGatewayClient } from "radix-agent-kit";
+
+const gateway = new RadixGatewayClient({
+  networkId: RadixNetwork.Stokenet
+});
+
+// Query wallet balance
+const balances = await gateway.getAccountBalances(wallet.getAddress());
+
+// Sign and submit transaction
+const signedTx = await wallet.signTransaction(transactionIntent);
+const result = await gateway.submitTransaction(signedTx);
+```
+
+## Custom Wallet Implementation
+
+Create custom wallet implementations by implementing the interface:
+
+```typescript
+class CustomWallet implements RadixWallet {
+  private address: string;
+  private publicKey: string;
+  private privateKey: string;
+  
+  constructor(config: CustomWalletConfig) {
+    // Initialize wallet
+    this.address = config.address;
+    this.publicKey = config.publicKey;
+    this.privateKey = config.privateKey;
+  }
+  
+  getAddress(): string {
+    return this.address;
+  }
+  
+  getPublicKey(): string {
+    return this.publicKey;
+  }
+  
+  getPrivateKeyHex(): string {
+    return this.privateKey;
+  }
+  
+  async sign(data: Uint8Array): Promise\<string> {
+    // Implement signing logic
+    // Use Ed25519 signing with private key
+    return "signature_hex";
+  }
+  
+  async signTransaction(transactionIntent: any): Promise\<any> {
+    // Implement transaction signing
+    const signature = await this.sign(transactionIntent.payloadBytes);
+    return {
+      intentHash: transactionIntent.intentHash,
+      signature: signature,
+      publicKey: this.publicKey
+    };
+  }
+}
+
+// Use custom wallet
+const customWallet: RadixWallet = new CustomWallet({
+  address: "account_tdx_2_1c8atrq...",
+  publicKey: "public_key_hex",
+  privateKey: "private_key_hex"
+});
+```
+
+## Error Handling
+
+Handle wallet errors consistently:
+
+```typescript
+async function safeWalletOperation(wallet: RadixWallet): Promise\<string | null> {
+  try {
+    const data = new TextEncoder().encode("test");
+    const signature = await wallet.sign(data);
+    return signature;
+  } catch (error) {
+    if (error.message.includes('private key')) {
+      console.error("Private key error - wallet may be locked");
+    } else if (error.message.includes('network')) {
+      console.error("Network error - check connection");
+    } else if (error.message.includes('hardware')) {
+      console.error("Hardware wallet error - check device");
+    } else {
+      console.error("Wallet operation failed:", error.message);
+    }
+    return null;
+  }
+}
+```

@@ -6,15 +6,19 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "demo:basic": "node demos/basic-agent.js",
-    "demo:direct-api": "node demos/direct-api.js",
-    "demo:defi": "node demos/defi-operations.js",
+    "demo:accounts": "node demos/account-operations.js",
+    "demo:components": "node demos/component-interaction.js",
+    "demo:wallets": "node demos/wallet-operations.js",
     "demo:tokens": "node demos/token-operations.js",
-    "demo:staking": "node demos/staking-demo.js"
+    "demo:defi": "node demos/defi-operations.js",
+    "demo:staking": "node demos/staking-operations.js"
   },
   "dependencies": {
+    "@langchain/openai": "^0.5.11",
+    "langchain": "^0.3.26",
     "axios": "^1.9.0",
     "dotenv": "^16.3.1",
+    "bip39": "^3.1.0",
     "radix-agent-kit": "file:../../packages/radix-agent-kit"
   },
   "keywords": [
@@ -22,7 +26,7 @@
     "blockchain",
     "ai",
     "agent",
-    "replit"
+    "radix-agent-kit"
   ],
   "author": "Radix Agent Kit",
   "license": "MIT"

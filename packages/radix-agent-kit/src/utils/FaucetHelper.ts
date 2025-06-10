@@ -36,28 +36,29 @@ export class FaucetHelper {
   }
 
   /**
-   * Auto-fund newly created wallets on Stokenet
+   * Automatically fund a newly created wallet with testnet XRD
    * This method should be called automatically when creating new wallets
    */
   public async autoFundNewWallet(wallet: RadixWallet, minimumAmount: number = 100): Promise<boolean> {
     try {
-      console.log(`🚀 Auto-funding newly created wallet: ${wallet.getAddress()}`);
+      const walletAddress = wallet.getAddress();
+      
+      // Validate address format first
+      if (!walletAddress || walletAddress.includes('pending') || !walletAddress.startsWith('account_tdx_')) {
+        return false;
+      }
       
       // Check if wallet already has funds
       const currentBalance = await this.getXRDBalance(wallet);
       
       if (currentBalance >= minimumAmount) {
-        console.log(`✅ Wallet already has sufficient balance: ${currentBalance} XRD (minimum: ${minimumAmount} XRD)`);
         return true;
       }
       
       // If account has substantial funds (10,000+ XRD), don't fund more
       if (currentBalance >= 10000) {
-        console.log(`🛑 Wallet has substantial balance (${currentBalance} XRD), skipping auto-funding`);
         return true;
       }
-      
-      console.log(`💰 Current balance: ${currentBalance} XRD - proceeding with funding...`);
       
       // Try multiple funding methods for better reliability
       let fundingSuccessful = false;
@@ -66,17 +67,15 @@ export class FaucetHelper {
         await this.fundWalletWithFaucet(wallet);
         fundingSuccessful = true;
       } catch (error) {
-        console.log('🔄 Primary funding failed, trying alternative method...');
         try {
           await this.fundWalletSimple(wallet);
           fundingSuccessful = true;
         } catch (altError) {
-          console.log('🔄 Alternative funding failed, trying fee-paying method...');
           try {
             await this.fundWalletWithFaucetFees(wallet);
             fundingSuccessful = true;
           } catch (feeError) {
-            console.error('❌ All funding methods failed');
+            // Silent fail
           }
         }
       }
@@ -87,22 +86,12 @@ export class FaucetHelper {
         
         // Verify funding was successful
         const newBalance = await this.getXRDBalance(wallet);
-        const actuallyFunded = newBalance >= minimumAmount;
-        
-        if (actuallyFunded) {
-          console.log(`✅ Auto-funding successful! New balance: ${newBalance} XRD`);
-        } else {
-          console.warn(`⚠️ Auto-funding may have failed. Balance: ${newBalance} XRD`);
-        }
-        
-        return actuallyFunded;
+        return newBalance >= minimumAmount;
       }
       
       return false;
       
     } catch (error) {
-      console.error('❌ Auto-funding failed:', error);
-      console.log('💡 Manual funding required. Visit: https://stokenet-dashboard.radixdlt.com/');
       return false;
     }
   }
@@ -139,8 +128,6 @@ export class FaucetHelper {
    */
   public async fundWalletWithFaucet(wallet: RadixWallet): Promise<string> {
     try {
-      console.log(`💰 Using official faucet method for ${wallet.getAddress()}`);
-
       const currentEpoch = await this.gatewayClient.getCurrentEpoch();
 
       // Use the official SimpleTransactionBuilder.freeXrdFromFaucet method
@@ -150,23 +137,17 @@ export class FaucetHelper {
         toAccount: wallet.getAddress()
       });
 
-      console.log('✅ Built faucet transaction using official method');
-
       // Submit transaction
       const transactionHex = compiledTransaction.toHex();
       const result = await this.gatewayClient.submitTransaction(transactionHex);
       
       if (result.duplicate) {
-        console.log(`⚠️ Duplicate transaction detected`);
         return 'duplicate';
       } else {
-        console.log(`✅ Faucet transaction submitted successfully`);
-        console.log(`🌐 Check account: https://stokenet-dashboard.radixdlt.com/account/${wallet.getAddress()}`);
         return 'submitted';
       }
 
     } catch (error) {
-      console.error('❌ Official faucet method failed:', error);
       throw new Error(`Failed to fund wallet with official faucet: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -176,8 +157,6 @@ export class FaucetHelper {
    */
   public async fundWalletWithFaucetFees(wallet: RadixWallet): Promise<string> {
     try {
-      console.log(`💰 Using custom faucet method for ${wallet.getAddress()}`);
-
       const currentEpoch = await this.gatewayClient.getCurrentEpoch();
       const privateKeyBytes = Buffer.from(wallet.getPrivateKeyHex(), 'hex');
       const privateKey = new PrivateKey.Ed25519(privateKeyBytes);
@@ -202,17 +181,13 @@ export class FaucetHelper {
       // Sign the transaction using the private key as signer
       const compiledTransaction = compiledIntent.compileNotarized(privateKey);
 
-      console.log('✅ Built custom faucet transaction');
-
       // Submit transaction
       const transactionHex = compiledTransaction.toHex();
       const result = await this.gatewayClient.submitTransaction(transactionHex);
       
-      console.log(`✅ Custom faucet transaction submitted successfully`);
       return result.duplicate ? 'duplicate' : 'submitted';
 
     } catch (error) {
-      console.error('❌ Custom faucet method failed:', error);
       throw new Error(`Failed to fund wallet with custom method: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -222,13 +197,10 @@ export class FaucetHelper {
    */
   public async fundWalletSimple(wallet: RadixWallet): Promise<string> {
     try {
-      console.log(`💰 Using simple faucet method for ${wallet.getAddress()}`);
-
       // Try the official method as simple fallback
       return await this.fundWalletWithFaucet(wallet);
 
     } catch (error) {
-      console.error('❌ Simple faucet method failed:', error);
       throw new Error(`Failed to fund wallet with simple method: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -280,7 +252,15 @@ export class FaucetHelper {
    */
   public async getXRDBalance(wallet: RadixWallet): Promise<number> {
     try {
-      const accountDetails = await this.gatewayClient.getAccountBalances(wallet.getAddress());
+      const walletAddress = wallet.getAddress();
+      
+      // Validate address format before making API call
+      if (!walletAddress || walletAddress.includes('pending') || !walletAddress.startsWith('account_tdx_')) {
+        console.log(`⚠️ Invalid or pending address: ${walletAddress}, returning 0 balance`);
+        return 0;
+      }
+
+      const accountDetails = await this.gatewayClient.getAccountBalances(walletAddress);
       
       if (!accountDetails?.items?.[0]?.fungible_resources?.items) {
         return 0;
@@ -290,18 +270,68 @@ export class FaucetHelper {
         (resource: any) => resource.resource_address === FaucetHelper.STOKENET_XRD_ADDRESS
       );
 
-      if (!xrdResource?.vaults?.items?.[0]?.amount) {
-        return 0;
+      if (xrdResource && xrdResource.vaults?.items?.length > 0) {
+        const rawAmount = xrdResource.vaults.items[0].amount;
+        
+        // Gateway API already returns amounts in correct decimal format - no conversion needed
+        const balance = parseFloat(rawAmount);
+        
+        return balance;
       }
 
-      // The amount is already in XRD, not atto-XRD
-      const balance = parseFloat(xrdResource.vaults.items[0].amount);
-      console.log(`🔍 Raw balance from API: ${xrdResource.vaults.items[0].amount}`);
-      console.log(`🔍 Parsed balance: ${balance}`);
-      return balance;
+      return 0;
     } catch (error) {
       console.warn('Error fetching XRD balance:', error);
+      // If there's an error (like account not found/indexed yet), return 0
       return 0;
+    }
+  }
+
+  /**
+   * Force fund wallet regardless of current balance
+   * Use this when user explicitly requests funding
+   */
+  public async forceFundWallet(wallet: RadixWallet): Promise<{ success: boolean; method: string; error?: string }> {
+    try {
+      const walletAddress = wallet.getAddress();
+      
+      // Validate address format first
+      if (!walletAddress || walletAddress.includes('pending') || !walletAddress.startsWith('account_tdx_')) {
+        return { success: false, method: 'validation', error: 'Invalid wallet address format' };
+      }
+      
+      console.log(`💰 Force funding wallet: ${walletAddress}`);
+      
+      // Try multiple funding methods without balance checks
+      const methods = [
+        { name: 'official_faucet', func: () => this.fundWalletWithFaucet(wallet) },
+        { name: 'simple_faucet', func: () => this.fundWalletSimple(wallet) },
+        { name: 'custom_faucet', func: () => this.fundWalletWithFaucetFees(wallet) }
+      ];
+
+      for (const method of methods) {
+        try {
+          console.log(`🔄 Trying ${method.name} funding method...`);
+          const result = await method.func();
+          console.log(`✅ ${method.name} returned: ${result}`);
+          
+          if (result === 'submitted' || result === 'duplicate') {
+            return { success: true, method: method.name };
+          }
+        } catch (error) {
+          console.warn(`⚠️ ${method.name} failed:`, error instanceof Error ? error.message : String(error));
+          continue;
+        }
+      }
+      
+      return { success: false, method: 'all_failed', error: 'All funding methods failed' };
+      
+    } catch (error) {
+      return { 
+        success: false, 
+        method: 'exception', 
+        error: error instanceof Error ? error.message : String(error) 
+      };
     }
   }
 } 

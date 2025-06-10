@@ -49,21 +49,42 @@
     {
       "group": "API Reference",
       "pages": [
-        "api/overview",
-        "api/agent",
-        "api/gateway",
-        "api/wallet",
-        "api/transaction-builder",
-        "api/token",
-        "api/defi",
-        "api/component",
-        "api/tools",
-        "api/security"
+        "api-reference",
+        {
+          "group": "Core Classes",
+          "pages": [
+            "api-reference/agent",
+            "api-reference/gateway",
+            "api-reference/transaction-builder"
+          ]
+        },
+        {
+          "group": "Wallet Management", 
+          "pages": [
+            "api-reference/mnemonic-wallet",
+            "api-reference/vault-wallet",
+            "api-reference/account",
+            "api-reference/wallet-interface"
+          ]
+        },
+        {
+          "group": "Blockchain Operations",
+          "pages": [
+            "api-reference/token",
+            "api-reference/defi", 
+            "api-reference/component",
+            "api-reference/tools"
+          ]
+        },
+        {
+          "group": "Security & Utilities",
+          "pages": [
+            "api-reference/security",
+            "api-reference/key-storage",
+            "api-reference/faucet"
+          ]
+        }
       ]
-    },
-    {
-      "group": "Learn",
-      "pages": ["examples", "development"]
     }
   ],
   "footerSocials": {

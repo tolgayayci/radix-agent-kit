@@ -3,6 +3,12 @@ import {
   PrivateKey,
   PublicKey,
   NetworkId,
+  SimpleTransactionBuilder,
+  TransactionBuilder,
+  TransactionManifest,
+  TransactionHeader,
+  generateRandomNonce,
+  RadixEngineToolkit,
 } from '@radixdlt/radix-engine-toolkit';
 import { RadixNetwork } from './RadixGatewayClient';
 
@@ -147,74 +153,47 @@ export class RadixTransactionBuilder {
     signerPrivateKey: PrivateKey,
     currentEpoch: number,
     message?: string
-  ): Promise<Uint8Array> {
+  ): Promise<{ transaction: any, compiled: Uint8Array }> {
     try {
-      // Add fee locking to the manifest if not present
-      let finalManifest = manifest;
-      if (!manifest.includes('lock_fee')) {
-        finalManifest = `
-          CALL_METHOD
-            Address("${this.getDefaultAccount()}")
-            "lock_fee"
-            Decimal("10");
-          
-          ${manifest}
-        `;
-      }
-
-      console.log('Built custom manifest:', finalManifest);
+      console.log('Building transaction with manifest:', manifest.substring(0, 100) + '...');
       
-      try {
-        // Try to use the proper transaction building if available
-        const manifestBytes = new TextEncoder().encode(finalManifest);
-        const publicKey = signerPrivateKey.publicKey();
-        
-        // Create a transaction hash from the manifest and epoch
-        const transactionData = {
-          manifest: finalManifest,
-          epoch: currentEpoch,
-          nonce: Math.floor(Math.random() * 100000),
-          publicKey: Buffer.from(publicKey.bytes).toString('hex'),
-          networkId: this.retNetworkId
-        };
-        
-        const transactionString = JSON.stringify(transactionData);
-        const transactionHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(transactionString));
-        
-        // Sign the transaction hash
-        const signature = signerPrivateKey.signToSignature(new Uint8Array(transactionHash));
-        
-        // Create a properly formatted transaction payload
-        const transaction = {
-          manifest: finalManifest,
-          signatures: [{
-            publicKey: Buffer.from(publicKey.bytes).toString('hex'),
-            signature: Buffer.from(signature.bytes).toString('hex')
-          }],
-          header: {
-            networkId: this.retNetworkId,
-            startEpochInclusive: currentEpoch,
-            endEpochExclusive: currentEpoch + 100,
-            nonce: Math.floor(Math.random() * 100000),
-            notaryPublicKey: Buffer.from(publicKey.bytes).toString('hex'),
-            notaryIsSignatory: true,
-            tipPercentage: 0
-          }
-        };
-        
-        // Encode the transaction as bytes
-        const transactionBytes = new TextEncoder().encode(JSON.stringify(transaction));
-        return transactionBytes;
-        
-      } catch (advancedError: any) {
-        console.warn('Advanced transaction building failed, using simplified approach:', advancedError.message);
-        // Fallback to simple encoding if the advanced method fails
-        console.warn('Using simplified transaction building - for production use the official SimpleTransactionBuilder when available');
-        return new TextEncoder().encode(finalManifest);
-      }
+      // Create transaction header
+      const transactionHeader: TransactionHeader = {
+        networkId: this.retNetworkId,
+        startEpochInclusive: currentEpoch,
+        endEpochExclusive: currentEpoch + 100,
+        nonce: await generateRandomNonce(),
+        notaryPublicKey: signerPrivateKey.publicKey(),
+        notaryIsSignatory: true,
+        tipPercentage: 0,
+      };
+
+      // Create transaction manifest from string
+      const transactionManifest: TransactionManifest = {
+        instructions: {
+          kind: 'String',
+          value: manifest,
+        },
+        blobs: []
+      };
+
+      // Build the transaction using TransactionBuilder
+      const transaction = await TransactionBuilder.new().then(builder =>
+        builder
+          .header(transactionHeader)
+          .manifest(transactionManifest)
+          .sign(signerPrivateKey)
+          .notarize(signerPrivateKey)
+      );
+
+      // Get the compiled bytes from the transaction
+      const compiled = await RadixEngineToolkit.NotarizedTransaction.compile(transaction);
+      
+      console.log('✅ Transaction compiled successfully, size:', compiled.length, 'bytes');
+      return { transaction, compiled };
     } catch (error) {
-      console.error('Error building custom manifest transaction:', error);
-      throw new Error(`Failed to build custom manifest transaction: ${error}`);
+      console.error('Error building transaction:', error);
+      throw new Error(`Failed to build transaction: ${error}`);
     }
   }
 
@@ -275,28 +254,52 @@ export class RadixTransactionBuilder {
         "lock_fee"
         Decimal("10");
       
-      CALL_FUNCTION
-        Address("${this.getPackageAddress()}")
-        "FungibleResourceManager"
-        "create_with_initial_supply"
-        Decimal("${divisibility}")
-        Map<String, String>(
-          "name" => "${tokenName}",
-          "symbol" => "${tokenSymbol}",
-          "description" => "${tokenName} Token"
+      CREATE_FUNGIBLE_RESOURCE_WITH_INITIAL_SUPPLY
+        Enum<OwnerRole::None>()
+        true
+        ${divisibility}u8
+        Decimal("${initialSupply}")
+        Tuple(
+          Some(
+            Tuple(
+              Some(Enum<AccessRule::AllowAll>()),
+              Some(Enum<AccessRule::DenyAll>())
+            )
+          ),
+          None,
+          None,
+          None,
+          None,
+          None
         )
-        Tuple()
-        Decimal("${initialSupply}");
-      
-      TAKE_ALL_FROM_WORKTOP
-        Address("${this.getXRDResourceAddress()}")
-        Bucket("new_tokens");
+        Tuple(
+          Map<String, Tuple>(
+            "name" => Tuple(
+              Some(Enum<Metadata::String>("${tokenName}")),
+              true
+            ),
+            "symbol" => Tuple(
+              Some(Enum<Metadata::String>("${tokenSymbol}")),
+              true
+            ),
+            "description" => Tuple(
+              Some(Enum<Metadata::String>("${tokenName} Token")),
+              true
+            )
+          ),
+          Map<String, Enum>(
+            "metadata_setter" => Some(Enum<AccessRule::AllowAll>()),
+            "metadata_setter_updater" => None,
+            "metadata_locker" => Some(Enum<AccessRule::DenyAll>()),
+            "metadata_locker_updater" => None
+          )
+        )
+        None;
       
       CALL_METHOD
         Address("${ownerAccount}")
-        "try_deposit_or_abort"
-        Bucket("new_tokens")
-        Enum<0u8>();
+        "deposit_batch"
+        Expression("ENTIRE_WORKTOP");
     `;
   }
 
@@ -404,8 +407,8 @@ export class RadixTransactionBuilder {
   public isValidAddress(address: string): boolean {
     try {
       const networkPrefixes = {
-        [NetworkId.Mainnet]: ['account_rdx1', 'resource_rdx1', 'component_rdx1'],
-        [NetworkId.Stokenet]: ['account_tdx_2_1', 'resource_tdx_2_1', 'component_tdx_2_1'],
+        [NetworkId.Mainnet]: ['account_rdx1', 'resource_rdx1', 'component_rdx1', 'validator_rdx1', 'package_rdx1'],
+        [NetworkId.Stokenet]: ['account_tdx_2_1', 'resource_tdx_2_1', 'component_tdx_2_1', 'validator_tdx_2_1', 'package_tdx_2_1'],
       };
 
       const prefixes = networkPrefixes[this.retNetworkId] || [];

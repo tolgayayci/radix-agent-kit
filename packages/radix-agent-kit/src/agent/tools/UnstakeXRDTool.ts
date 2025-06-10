@@ -6,9 +6,9 @@ import { RadixWallet } from "../../radix/RadixWallet";
 import { DeFi } from "../../radix/DeFi";
 
 /**
- * Factory function to create StakeXRD tool
+ * Factory function to create UnstakeXRD tool
  */
-export function createStakeXRDTool(
+export function createUnstakeXRDTool(
   gatewayClient: RadixGatewayClient,
   transactionBuilder: RadixTransactionBuilder,
   wallet: RadixWallet,
@@ -17,11 +17,11 @@ export function createStakeXRDTool(
   const defiService = new DeFi(transactionBuilder, gatewayClient, networkId);
 
   return new DynamicStructuredTool({
-    name: "stake_xrd",
-    description: "Stake XRD tokens with a validator to earn rewards. ALWAYS use this tool when the user asks to 'stake XRD', 'stake tokens', 'stake with validator', or similar staking requests. This is the ONLY tool for staking operations.",
+    name: "unstake_xrd",
+    description: "Unstake XRD tokens from a validator. ALWAYS use this tool when the user asks to 'unstake XRD', 'unstake tokens', 'unstake from validator', 'withdraw staked XRD', or similar unstaking requests. This is the ONLY tool for unstaking operations.",
     schema: z.object({
-      validatorAddress: z.string().describe("The validator address to stake with (must start with 'validator_')"),
-      amount: z.string().describe("Amount of XRD to stake")
+      validatorAddress: z.string().describe("The validator address to unstake from (must start with 'validator_')"),
+      amount: z.string().describe("Amount of stake units to unstake")
     }),
     func: async ({ validatorAddress, amount }) => {
       try {
@@ -34,24 +34,10 @@ export function createStakeXRDTool(
           return `❌ Invalid amount: ${amount}. Must be a positive number`;
         }
 
-        // Check XRD balance
-        try {
-          const balances = await gatewayClient.getAccountBalances(wallet.getAddress());
-          const xrdBalance = balances.items?.[0]?.fungible_resources?.items?.find(
-            (resource: any) => resource.resource_address === transactionBuilder.getXRDResourceAddress()
-          );
-
-          if (!xrdBalance || parseFloat(xrdBalance.vaults?.items?.[0]?.amount || '0') < parseFloat(amount)) {
-            return `❌ Insufficient XRD balance. Available: ${xrdBalance?.vaults?.items?.[0]?.amount || '0'} XRD, Required: ${amount} XRD`;
-          }
-        } catch (error) {
-          console.warn("Could not check XRD balance:", error);
-        }
-
-        // Get current epoch and stake
+        // Get current epoch and unstake
         const currentEpoch = await gatewayClient.getCurrentEpoch();
         
-        const txHash = await defiService.stakeXRD(
+        const txHash = await defiService.unstakeXRD(
           {
             ownerAddress: wallet.getAddress(),
             validatorAddress,
@@ -64,19 +50,19 @@ export function createStakeXRDTool(
         const shortValidator = `${validatorAddress.slice(0, 16)}...`;
         const shortTx = txHash.slice(0, 20);
         
-        return `✅ Staked ${amount} XRD with validator ${shortValidator} completed successfully. Transaction: ${shortTx}...`;
+        return `✅ Unstaked ${amount} XRD stake units from validator ${shortValidator} completed successfully. Transaction: ${shortTx}...`;
       } catch (error) {
-        console.error("Error staking XRD:", error);
-        return `❌ Failed to stake XRD: ${error instanceof Error ? error.message : String(error)}`;
+        console.error("Error unstaking XRD:", error);
+        return `❌ Failed to unstake XRD: ${error instanceof Error ? error.message : String(error)}`;
       }
     }
   });
 }
 
 // Keep the old class for backward compatibility
-export class StakeXRDTool {
-  name = "stake_xrd";
-  description = "Stake XRD tokens with a validator to earn rewards";
+export class UnstakeXRDTool {
+  name = "unstake_xrd";
+  description = "Unstake XRD tokens from a validator";
   
   constructor(
     private gatewayClient: RadixGatewayClient,
@@ -86,7 +72,7 @@ export class StakeXRDTool {
   ) {}
 
   async _call(input: string): Promise<string> {
-    const tool = createStakeXRDTool(this.gatewayClient, this.transactionBuilder, this.wallet, this.networkId);
+    const tool = createUnstakeXRDTool(this.gatewayClient, this.transactionBuilder, this.wallet, this.networkId);
     
     // Parse input format: "validator,amount" or JSON
     try {
@@ -109,4 +95,4 @@ export class StakeXRDTool {
       return `❌ Failed to parse input: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
-}
+} 

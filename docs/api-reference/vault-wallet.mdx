@@ -1,0 +1,326 @@
+---
+title: "VaultWallet"
+description: "Hardware wallet interface and support"
+---
+
+# VaultWallet
+
+The `VaultWallet` class provides hardware wallet support for Radix Agent Kit, enabling secure key management through hardware security modules and encrypted vault storage.
+
+## Constructor
+
+```typescript
+constructor(config: VaultWalletConfig)
+```
+
+Creates a new VaultWallet instance.
+
+### VaultWalletConfig
+
+```typescript
+interface VaultWalletConfig {
+  networkId: number;
+  applicationName?: string;
+  vaultPath?: string;
+  encryptionKey?: string;
+}
+```
+
+**Example:**
+```typescript
+import { VaultWallet } from "radix-agent-kit";
+
+const vaultWallet = new VaultWallet({
+  networkId: 2, // Stokenet
+  applicationName: "MySecureApp",
+  vaultPath: "./secure-vault",
+  encryptionKey: process.env.VAULT_ENCRYPTION_KEY
+});
+```
+
+## Core Methods
+
+### getAddress(): string
+
+Get the current account's Radix address.
+
+```typescript
+const address = vaultWallet.getAddress();
+console.log("Vault address:", address);
+```
+
+### getPublicKey(): string
+
+Get the current account's public key as hex string.
+
+```typescript
+const publicKey = vaultWallet.getPublicKey();
+console.log("Public key:", publicKey);
+```
+
+### sign(data: Uint8Array): Promise\<string>
+
+Sign arbitrary data using the vault's secure signing mechanism.
+
+```typescript
+const data = new TextEncoder().encode("Message to sign");
+const signature = await vaultWallet.sign(data);
+console.log("Signature:", signature);
+```
+
+### signTransaction(transactionIntent: any): Promise\<any>
+
+Sign a transaction intent using hardware security.
+
+```typescript
+const signedTransaction = await vaultWallet.signTransaction(transactionIntent);
+```
+
+## Vault Management
+
+### createVaultKey(config: VaultWalletConfig): Promise\<string>
+
+Create a new vault encryption key.
+
+```typescript
+import { createVaultKey } from "radix-agent-kit";
+
+const encryptionKey = await createVaultKey({
+  networkId: 2,
+  applicationName: "MyApp"
+});
+
+console.log("Generated vault key:", encryptionKey);
+```
+
+### exportVaultPublicKey(vaultPath: string): Promise\<string>
+
+Export the public key from an existing vault.
+
+```typescript
+import { exportVaultPublicKey } from "radix-agent-kit";
+
+const publicKey = await exportVaultPublicKey("./secure-vault");
+console.log("Vault public key:", publicKey);
+```
+
+## Security Features
+
+### Hardware Security Module (HSM) Support
+
+VaultWallet integrates with hardware security modules for maximum security:
+
+```typescript
+const vaultWallet = new VaultWallet({
+  networkId: 2,
+  applicationName: "ProductionApp",
+  vaultPath: "/secure/hardware/vault",
+  encryptionKey: process.env.HSM_ENCRYPTION_KEY
+});
+
+// All signing operations use HSM
+const signature = await vaultWallet.sign(transactionData);
+```
+
+### Encrypted Storage
+
+Keys are stored in encrypted format:
+
+```typescript
+// Vault automatically encrypts all sensitive data
+const vaultWallet = new VaultWallet({
+  networkId: 2,
+  vaultPath: "./encrypted-vault",
+  encryptionKey: "your-strong-encryption-key"
+});
+
+// Keys never exist in plaintext in memory
+const address = vaultWallet.getAddress();
+```
+
+## Usage Examples
+
+### Basic Vault Setup
+
+```typescript
+import { VaultWallet, createVaultKey } from "radix-agent-kit";
+
+// Create encryption key
+const encryptionKey = await createVaultKey({
+  networkId: 2,
+  applicationName: "MySecureApp"
+});
+
+// Initialize vault wallet
+const vaultWallet = new VaultWallet({
+  networkId: 2,
+  applicationName: "MySecureApp",
+  vaultPath: "./production-vault",
+  encryptionKey: encryptionKey
+});
+
+console.log("Secure wallet address:", vaultWallet.getAddress());
+```
+
+### Integration with RadixAgent
+
+```typescript
+import { RadixAgent, VaultWallet, RadixNetwork } from "radix-agent-kit";
+
+// Create vault wallet
+const vaultWallet = new VaultWallet({
+  networkId: 2,
+  applicationName: "SecureAgent",
+  vaultPath: "./agent-vault",
+  encryptionKey: process.env.VAULT_KEY
+});
+
+// Use with agent
+const agent = new RadixAgent({
+  networkId: RadixNetwork.Stokenet,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  wallet: vaultWallet
+});
+
+// All operations use hardware security
+await agent.run("What's my balance?");
+```
+
+### Production Deployment
+
+```typescript
+// Production configuration with maximum security
+const productionVault = new VaultWallet({
+  networkId: 1, // Mainnet
+  applicationName: "ProductionDApp",
+  vaultPath: "/secure/production/vault",
+  encryptionKey: process.env.PRODUCTION_VAULT_KEY
+});
+
+// Verify vault integrity
+const publicKey = await exportVaultPublicKey("/secure/production/vault");
+console.log("Production vault public key:", publicKey);
+
+// Use for high-value transactions
+const signature = await productionVault.sign(criticalTransactionData);
+```
+
+### Multi-Vault Management
+
+```typescript
+// Manage multiple vaults for different purposes
+const vaults = {
+  trading: new VaultWallet({
+    networkId: 1,
+    vaultPath: "./trading-vault",
+    encryptionKey: process.env.TRADING_VAULT_KEY
+  }),
+  
+  treasury: new VaultWallet({
+    networkId: 1,
+    vaultPath: "./treasury-vault", 
+    encryptionKey: process.env.TREASURY_VAULT_KEY
+  }),
+  
+  development: new VaultWallet({
+    networkId: 2,
+    vaultPath: "./dev-vault",
+    encryptionKey: process.env.DEV_VAULT_KEY
+  })
+};
+
+// Use appropriate vault for each operation
+const tradingSignature = await vaults.trading.sign(tradeData);
+const treasurySignature = await vaults.treasury.sign(treasuryData);
+```
+
+## Error Handling
+
+```typescript
+try {
+  const vaultWallet = new VaultWallet({
+    networkId: 2,
+    vaultPath: "./vault",
+    encryptionKey: "invalid-key"
+  });
+} catch (error) {
+  if (error.message.includes('encryption')) {
+    console.error("Invalid encryption key");
+  } else if (error.message.includes('vault path')) {
+    console.error("Vault path not accessible");
+  } else if (error.message.includes('hardware')) {
+    console.error("Hardware security module not available");
+  } else {
+    console.error("Vault initialization failed:", error.message);
+  }
+}
+```
+
+## Security Best Practices
+
+1. **Strong Encryption**: Use cryptographically secure encryption keys
+2. **Secure Storage**: Store vault files in secure, access-controlled locations
+3. **Key Management**: Never hardcode encryption keys in source code
+4. **Environment Variables**: Use environment variables for sensitive configuration
+5. **Access Control**: Implement proper file system permissions for vault directories
+6. **Backup Strategy**: Maintain secure backups of vault files
+7. **Hardware Security**: Use HSM when available for maximum security
+
+## Comparison with MnemonicWallet
+
+| Feature | VaultWallet | MnemonicWallet |
+|---------|-------------|----------------|
+| **Security** | Hardware/encrypted storage | Software-based |
+| **Key Storage** | Encrypted vault files | Memory/environment |
+| **Use Case** | Production/high-value | Development/testing |
+| **Setup Complexity** | Higher | Lower |
+| **Performance** | Slightly slower (encryption) | Faster |
+| **Recovery** | Vault backup required | Mnemonic phrase |
+
+## Integration Notes
+
+- **RadixAgent**: Fully compatible as RadixWallet implementation
+- **Transaction Builder**: Works seamlessly with all transaction types
+- **Gateway Client**: No special configuration required
+- **Production Ready**: Designed for production environments
+- **Cross-Platform**: Works on all platforms supporting Node.js
+
+## Troubleshooting
+
+### Common Issues
+
+**"Vault not found"**
+```typescript
+// Ensure vault path exists and is accessible
+const fs = require('fs');
+if (!fs.existsSync('./vault-path')) {
+  fs.mkdirSync('./vault-path', { recursive: true });
+}
+```
+
+**"Encryption key invalid"**
+```typescript
+// Verify encryption key format and strength
+if (!process.env.VAULT_KEY || process.env.VAULT_KEY.length < 32) {
+  throw new Error("Vault encryption key must be at least 32 characters");
+}
+```
+
+**"Hardware module not available"**
+```typescript
+// Check HSM availability
+try {
+  const vaultWallet = new VaultWallet(config);
+} catch (error) {
+  console.warn("HSM not available, falling back to software encryption");
+  // Implement fallback strategy
+}
+```
+
+<Warning>
+**Production Security**: VaultWallet is designed for production use with sensitive keys. Always use strong encryption keys and secure storage locations.
+</Warning>
+
+<Note>
+**Development**: For development and testing, consider using RadixMnemonicWallet for simpler setup. Use VaultWallet for production deployments requiring maximum security.
+</Note> 

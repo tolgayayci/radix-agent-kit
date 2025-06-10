@@ -1,0 +1,245 @@
+# Radix Agent Kit - Cursor Rules
+
+You are working with the **Radix Agent Kit** - a TypeScript package that bridges LangChain AI agents with Radix DLT blockchain operations.
+
+## 📁 Project Structure
+
+### Main Package: `packages/radix-agent-kit/`
+
+```
+src/
+├── index.ts                    # Main entry point - exports all public APIs
+├── agent/
+│   ├── RadixAgent.ts           # Main AI agent class (19KB, 592 lines)
+│   ├── tools/                  # LangChain tools for blockchain operations
+│   │   ├── index.ts            # Tool factory and error handling wrapper
+│   │   ├── RadixTool.ts        # Base class for all tools
+│   │   ├── GetAccountInfoTool.ts
+│   │   ├── GetBalancesTool.ts
+│   │   ├── TransferTokensTool.ts
+│   │   ├── CreateFungibleResourceTool.ts
+│   │   ├── CreateNonFungibleResourceTool.ts
+│   │   ├── MintFungibleResourceTool.ts
+│   │   ├── MintNonFungibleResourceTool.ts
+│   │   ├── StakeXRDTool.ts
+│   │   ├── AddLiquidityTool.ts
+│   │   ├── SwapTokensTool.ts
+│   │   ├── CallComponentMethodTool.ts
+│   │   ├── GetEpochTool.ts
+│   │   └── FundStokenetWalletTool.ts
+├── radix/                      # Core Radix blockchain functionality
+│   ├── RadixGatewayClient.ts   # Gateway API client
+│   ├── RadixTransactionBuilder.ts # Transaction building
+│   ├── RadixWallet.ts          # Base wallet interface
+│   ├── MnemonicWallet.ts       # Mnemonic-based wallet (18KB, 610 lines)
+│   ├── VaultWallet.ts          # Hardware wallet support
+│   ├── RadixAccount.ts         # Account operations
+│   ├── Token.ts                # Token creation/management (18KB, 577 lines)
+│   ├── DeFi.ts                 # DeFi operations (27KB, 1015 lines)
+│   └── Component.ts            # Smart contract interactions
+├── security/
+│   ├── TransactionSecurity.ts  # Security validation (11KB, 416 lines)
+│   └── KeyStorage.ts           # Secure key management (9.3KB, 361 lines)
+└── utils/
+    ├── FaucetHelper.ts         # Testnet funding utilities (11KB, 337 lines)
+    └── index.ts
+
+tests/
+├── README.md                   # Testing guidelines and conventions
+├── setup.ts                    # Jest global setup
+├── integration/                # End-to-end tests
+├── agent/
+│   ├── RadixTools.test.ts
+│   └── tools/
+│       ├── IndividualTools.test.ts
+│       └── ToolsIntegration.test.ts
+├── security/                   # Security-related tests
+├── *.test.ts                   # Component-specific tests
+└── .gitignore
+
+scripts/
+├── README.md
+├── install-test-deps.sh        # Test dependency setup
+└── check-tests.js              # Test environment checker
+```
+
+## 🔧 Core Components
+
+### 1. RadixAgent (`src/agent/RadixAgent.ts`)
+- **Purpose**: Main AI agent that combines LangChain with Radix blockchain
+- **Key Features**: 
+  - Natural language interface to blockchain operations
+  - Memory support for conversations
+  - Auto-wallet generation and funding
+  - Error handling and retry logic
+- **Dependencies**: LangChain, OpenAI, Radix Gateway API
+
+### 2. Tools System (`src/agent/tools/`)
+- **Architecture**: Factory pattern with base `RadixTool` class
+- **Error Handling**: Wrapped with retry logic and user-friendly error messages
+- **Available Tools**:
+  - Account operations: `GetAccountInfoTool`, `GetBalancesTool`
+  - Transfers: `TransferTokensTool`
+  - Token creation: `CreateFungibleResourceTool`, `CreateNonFungibleResourceTool`
+  - Token minting: `MintFungibleResourceTool`, `MintNonFungibleResourceTool`
+  - DeFi: `StakeXRDTool`, `AddLiquidityTool`, `SwapTokensTool`
+  - Utilities: `GetEpochTool`, `FundStokenetWalletTool`
+  - Smart contracts: `CallComponentMethodTool`
+
+### 3. Radix Layer (`src/radix/`)
+- **Gateway Client**: Handles all Radix network communication
+- **Transaction Builder**: Creates and submits transactions
+- **Wallet System**: Multiple wallet types (mnemonic, hardware)
+- **Specialized Services**: Token, DeFi, Component operations
+
+## 🛠️ Development Guidelines
+
+### Adding New Tools
+
+1. **Create Tool File**: `src/agent/tools/YourNewTool.ts`
+```typescript
+import { RadixTool } from "./RadixTool";
+import { z } from "zod";
+
+export function createYourNewTool(
+  gatewayClient: RadixGatewayClient,
+  transactionBuilder: RadixTransactionBuilder,
+  wallet: RadixWallet,
+  networkId: number
+) {
+  return new DynamicStructuredTool({
+    name: "your_new_tool",
+    description: "Description of what your tool does",
+    schema: z.object({
+      param1: z.string().describe("Description of param1"),
+      param2: z.number().optional().describe("Optional param2")
+    }),
+    func: async (input) => {
+      // Your tool implementation
+      // Use the injected services
+      return "Tool result";
+    }
+  });
+}
+```
+
+2. **Export from Index**: Add to `src/agent/tools/index.ts`
+```typescript
+export { createYourNewTool } from "./YourNewTool";
+```
+
+3. **Add to Default Tools**: Update `createDefaultRadixTools()` function
+
+4. **Write Tests**: Create `tests/agent/tools/YourNewTool.test.ts`
+
+### Testing Conventions
+
+- **Location**: All tests in `tests/` directory
+- **Naming**: `*.test.ts` files
+- **Structure**: Unit tests for individual components, integration tests for workflows
+- **Environment**: Tests run against Stokenet (testnet) by default
+- **Timeout**: 30 seconds for network operations
+- **Coverage**: Use `npm run test:coverage` to check coverage
+
+### Testing a New Tool:
+```typescript
+import { describe, expect, test } from '@jest/globals';
+import { createYourNewTool } from '../../src/agent/tools/YourNewTool';
+
+describe('YourNewTool', () => {
+  test('should handle valid input', async () => {
+    const tool = createYourNewTool(mockGateway, mockBuilder, mockWallet, networkId);
+    const result = await tool.func({ param1: "test" });
+    expect(result).toContain("expected output");
+  });
+});
+```
+
+### Security Best Practices
+
+1. **Never hardcode mnemonics** - Use environment variables
+2. **Start with Stokenet** - Always test on testnet first
+3. **Validate inputs** - Use Zod schemas for tool parameters
+4. **Use `TransactionSecurity`** - For transaction validation
+5. **Error handling** - Tools should return user-friendly error messages
+
+### Adding Blockchain Functionality
+
+1. **Core Services**: Add to `src/radix/` if it's fundamental blockchain functionality
+2. **Tool Integration**: Create corresponding tool in `src/agent/tools/`
+3. **Service Pattern**: Follow the pattern used in `Token.ts`, `DeFi.ts`, `Component.ts`
+
+Example service structure:
+```typescript
+export class YourService {
+  constructor(
+    private transactionBuilder: RadixTransactionBuilder,
+    private gatewayClient: RadixGatewayClient,
+    private networkId: number
+  ) {}
+
+  async yourMethod(options: YourOptions, wallet: RadixWallet): Promise<string> {
+    // Implementation
+    // Return transaction hash
+  }
+}
+```
+
+## 📦 Build & Scripts
+
+- **Build**: `npm run build` - Compiles TypeScript to `dist/`
+- **Test**: `npm test` - Runs Jest tests with 30s timeout
+- **Watch**: `npm run test:watch` - Tests in watch mode
+- **Coverage**: `npm run test:coverage` - Generate coverage report
+- **Lint**: `npm run lint` - ESLint with TypeScript rules
+
+## 🌐 Networks
+
+- **Stokenet (Testnet)**: Default for development and testing
+- **Mainnet**: Production use only after thorough testing
+
+## 📚 Key Dependencies
+
+- **@radixdlt/babylon-gateway-api-sdk**: Radix Gateway API
+- **@radixdlt/radix-engine-toolkit**: Transaction building
+- **langchain**: AI agent framework
+- **@langchain/openai**: OpenAI integration
+- **bip39**: Mnemonic generation
+- **zod**: Schema validation
+
+## 🚨 Common Patterns
+
+### Error Handling in Tools:
+```typescript
+try {
+  const result = await this.someOperation();
+  return this.formatTransactionResult(result, "Operation");
+} catch (error) {
+  return `❌ Operation failed: ${this.formatError(error)}`;
+}
+```
+
+### Input Validation:
+```typescript
+this.validateRequiredParams(input, ['param1', 'param2']);
+const amount = this.parseAmount(input.amount);
+if (!this.isValidAddress(input.address)) {
+  throw new Error("Invalid Radix address");
+}
+```
+
+### Service Usage:
+```typescript
+// In tools, use the injected services
+const txHash = await this.tokenService.createFungibleToken(options, this.wallet);
+const balance = await this.gatewayClient.getAccountBalances(address);
+```
+
+## 💡 Tips
+
+- Tools return strings (user-facing messages), services return data/hashes
+- Use factory functions for tools (enables dependency injection)
+- Follow the existing naming conventions
+- Add comprehensive JSDoc comments
+- Test both success and error cases
+- Consider rate limiting for network operations 

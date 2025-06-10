@@ -142,18 +142,6 @@ export class RadixMnemonicWallet implements RadixWallet {
     // Wait for proper address derivation
     await wallet.waitForProperAddress();
     
-    // Auto-fund wallet if on Stokenet
-    if (config.networkId === NetworkId.Stokenet) {
-      try {
-        console.log('🚀 Auto-funding newly created wallet...');
-        await RadixMnemonicWallet.autoFundWalletAsync(wallet);
-        console.log('✅ New wallet successfully funded with testnet XRD');
-      } catch (error) {
-        console.warn('⚠️ Auto-funding failed for new wallet:', error);
-        console.log('💡 Manual funding required. Visit: https://stokenet-dashboard.radixdlt.com/');
-      }
-    }
-    
     return wallet;
   }
 

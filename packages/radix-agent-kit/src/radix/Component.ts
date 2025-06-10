@@ -114,7 +114,7 @@ export class Component {
         );
 
       const txHex =
-        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction);
+        this.transactionBuilder.getCompiledTransactionHex(compiledTransaction.compiled);
       const submitResult = await this.gatewayClient.submitTransaction(txHex);
 
       if (submitResult.duplicate) {

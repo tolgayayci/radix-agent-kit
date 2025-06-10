@@ -12,6 +12,7 @@
     "test:ci": "jest --ci --coverage",
     "test:check": "node scripts/check-tests.js",
     "test:setup": "bash scripts/install-test-deps.sh",
+    "test:component": "tsx test-component-functionality.ts",
     "lint": "eslint . --ext .ts",
     "prepublishOnly": "npm run build"
   },
@@ -25,8 +26,8 @@
   "author": "Tolga Yaycı <tolgayayci@protonmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@radixdlt/babylon-gateway-api-sdk": "^1.0.0",
-    "@radixdlt/radix-engine-toolkit": "^1.0.0",
+    "@radixdlt/babylon-gateway-api-sdk": "^1.10.1",
+    "@radixdlt/radix-engine-toolkit": "^1.0.5",
     "@langchain/openai": "^0.5.11",
     "langchain": "^0.3.26",
     "bip39": "^3.1.0"

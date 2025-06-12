@@ -7,10 +7,13 @@ import { RadixTransactionBuilder } from "../../src/radix/RadixTransactionBuilder
 import { RadixMnemonicWallet } from "../../src/radix/MnemonicWallet";
 import { NetworkId } from "@radixdlt/radix-engine-toolkit";
 import {
-  GetAccountInfoTool,
-  GetBalancesTool,
-  TransferTokensTool,
-  CreateFungibleResourceTool,
+  createGetAccountInfoTool,
+  createGetBalancesTool,
+  createTransferTokensTool,
+  createCreateFungibleResourceTool,
+  createMintFungibleResourceTool,
+  createCreateNonFungibleResourceTool,
+  createMintNonFungibleResourceTool,
   StakeXRDTool,
   createDefaultRadixTools,
 } from "../../src/agent/tools";
@@ -50,11 +53,11 @@ describe("Radix LangChain Tools", () => {
       );
 
       expect(tools).toHaveLength(8);
-      expect(tools[0]).toBeInstanceOf(GetAccountInfoTool);
-      expect(tools[1]).toBeInstanceOf(GetBalancesTool);
-      expect(tools[2]).toBeInstanceOf(TransferTokensTool);
-      expect(tools[3]).toBeInstanceOf(CreateFungibleResourceTool);
-      expect(tools[4]).toBeInstanceOf(StakeXRDTool);
+      expect(tools[0]).toBeInstanceOf(createGetAccountInfoTool(gatewayClient, transactionBuilder, wallet, networkId));
+      expect(tools[1]).toBeInstanceOf(createGetBalancesTool(gatewayClient, transactionBuilder, wallet, networkId));
+      expect(tools[2]).toBeInstanceOf(createTransferTokensTool(gatewayClient, transactionBuilder, wallet, networkId));
+      expect(tools[3]).toBeInstanceOf(createCreateFungibleResourceTool(gatewayClient, transactionBuilder, wallet, networkId));
+      expect(tools[4]).toBeInstanceOf(StakeXRDTool(gatewayClient, transactionBuilder, wallet, networkId));
     });
 
     it("should have correct tool names", () => {
@@ -78,10 +81,10 @@ describe("Radix LangChain Tools", () => {
   });
 
   describe("GetAccountInfoTool", () => {
-    let tool: GetAccountInfoTool;
+    let tool: createGetAccountInfoTool;
 
     beforeEach(() => {
-      tool = new GetAccountInfoTool(
+      tool = createGetAccountInfoTool(
         gatewayClient,
         transactionBuilder,
         wallet,
@@ -107,10 +110,10 @@ describe("Radix LangChain Tools", () => {
   });
 
   describe("GetBalancesTool", () => {
-    let tool: GetBalancesTool;
+    let tool: createGetBalancesTool;
 
     beforeEach(() => {
-      tool = new GetBalancesTool(
+      tool = createGetBalancesTool(
         gatewayClient,
         transactionBuilder,
         wallet,
@@ -130,10 +133,10 @@ describe("Radix LangChain Tools", () => {
   });
 
   describe("TransferTokensTool", () => {
-    let tool: TransferTokensTool;
+    let tool: createTransferTokensTool;
 
     beforeEach(() => {
-      tool = new TransferTokensTool(
+      tool = createTransferTokensTool(
         gatewayClient,
         transactionBuilder,
         wallet,
@@ -165,10 +168,10 @@ describe("Radix LangChain Tools", () => {
   });
 
   describe("CreateFungibleResourceTool", () => {
-    let tool: CreateFungibleResourceTool;
+    let tool: createCreateFungibleResourceTool;
 
     beforeEach(() => {
-      tool = new CreateFungibleResourceTool(
+      tool = createCreateFungibleResourceTool(
         gatewayClient,
         transactionBuilder,
         wallet,
@@ -206,7 +209,7 @@ describe("Radix LangChain Tools", () => {
     let tool: StakeXRDTool;
 
     beforeEach(() => {
-      tool = new StakeXRDTool(
+      tool = StakeXRDTool(
         gatewayClient,
         transactionBuilder,
         wallet,
@@ -231,10 +234,10 @@ describe("Radix LangChain Tools", () => {
   });
 
   describe("Tool Input Parsing", () => {
-    let tool: TransferTokensTool;
+    let tool: createTransferTokensTool;
 
     beforeEach(() => {
-      tool = new TransferTokensTool(
+      tool = createTransferTokensTool(
         gatewayClient,
         transactionBuilder,
         wallet,

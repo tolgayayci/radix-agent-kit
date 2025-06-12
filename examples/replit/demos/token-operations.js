@@ -11,10 +11,13 @@ import { RadixAgent, RadixNetwork } from 'radix-agent-kit';
  */
 
 function extractResourceAddress(response) {
-  // Try multiple patterns to extract resource address
-  let match = response.match(/Resource: (resource_tdx_[a-zA-Z0-9]+)/);
+  // Updated pattern to match complete Radix resource addresses
+  let match = response.match(/🔗 Resource: (resource_tdx_[a-zA-Z0-9_]+)/);
   if (!match) {
-    match = response.match(/(resource_tdx_[a-zA-Z0-9]+)/);
+    match = response.match(/Resource Address: (resource_tdx_[a-zA-Z0-9_]+)/);
+  }
+  if (!match) {
+    match = response.match(/(resource_tdx_[a-zA-Z0-9_]+)/);
   }
   return match ? match[1] : null;
 }
@@ -99,7 +102,7 @@ async function main() {
     console.log('4️⃣ Minting NFT...');
     if (nftResourceAddress) {
       // Use explicit language to trigger mint_non_fungible_resource tool
-      const nftMintRequest = `Mint a new NFT using this data: {"resourceAddress": "${nftResourceAddress}", "toAccount": "${wallet1.getAddress()}", "nftId": "001", "metadata": {"name": "Test NFT #1", "description": "First test NFT"}}`;
+      const nftMintRequest = `Mint a new NFT using this data: {"resourceAddress": "${nftResourceAddress}", "toAccount": "${wallet1.getAddress()}", "nftId": "1", "metadata": {"name": "Test NFT #1", "description": "First test NFT"}}`;
       const result4 = await agent1.run(nftMintRequest);
       console.log(`Response: ${result4}\n`);
     } else {

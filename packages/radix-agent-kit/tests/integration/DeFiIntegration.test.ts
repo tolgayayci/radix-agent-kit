@@ -164,7 +164,7 @@ describe('DeFi Integration Tests (Real Implementation)', () => {
         
         await defiService.createTwoResourcePool(poolOptions, wallet, currentEpoch);
       } catch (error) {
-        console.log('Expected error for invalid addresses:', error.message.slice(0, 100));
+        console.log('Expected error for invalid addresses:', (error as Error).message.slice(0, 100));
         expect(error).toBeDefined();
       }
     }, 30000);
@@ -189,7 +189,7 @@ describe('DeFi Integration Tests (Real Implementation)', () => {
         
         await defiService.addLiquidity(liquidityOptions, wallet, currentEpoch);
       } catch (error) {
-        console.log('Expected error for invalid pool address:', error.message.slice(0, 100));
+        console.log('Expected error for invalid pool address:', (error as Error).message.slice(0, 100));
         expect(error).toBeDefined();
       }
     }, 30000);
@@ -214,7 +214,7 @@ describe('DeFi Integration Tests (Real Implementation)', () => {
         
         await defiService.removeLiquidity(removeOptions, wallet, currentEpoch);
       } catch (error) {
-        console.log('Expected error for invalid pool address:', error.message.slice(0, 100));
+        console.log('Expected error for invalid pool address:', (error as Error).message.slice(0, 100));
         expect(error).toBeDefined();
       }
     }, 30000);
@@ -242,7 +242,7 @@ describe('DeFi Integration Tests (Real Implementation)', () => {
         
         await defiService.swapTokens(swapOptions, wallet, currentEpoch);
       } catch (error) {
-        console.log('Expected error for invalid addresses:', error.message.slice(0, 100));
+        console.log('Expected error for invalid addresses:', (error as Error).message.slice(0, 100));
         expect(error).toBeDefined();
       }
     }, 30000);

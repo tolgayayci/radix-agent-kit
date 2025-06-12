@@ -6,25 +6,66 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 
 /**
- * Extract NFT resource address from transaction receipt
+ * Extract NFT resource address from transaction receipt using proper async polling
  */
 async function extractNFTResourceAddress(gatewayClient: RadixGatewayClient, txHash: string): Promise<string | null> {
   try {
-    // Wait for transaction to be processed
-    await new Promise(resolve => setTimeout(resolve, 8000));
+    console.log(`🔍 Extracting NFT resource address from transaction: ${txHash}`);
     
-    const receipt = await gatewayClient.getTransactionDetails(txHash);
+    const maxAttempts = 20; // Maximum number of attempts
+    const pollInterval = 3000; // 3 seconds between polls
+    let attempts = 0;
     
-    // Look for NFT resource in new_global_entities
-    const newEntities = receipt.details?.receipt?.state_updates?.new_global_entities;
-    if (newEntities && newEntities.length > 0) {
-      for (const entity of newEntities) {
-        if (entity.entity_type === 'GlobalNonFungibleResource') {
-          return entity.entity_address;
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`   NFT resource extraction attempt ${attempts}/${maxAttempts}...`);
+      
+      try {
+        // Use proper transaction status API
+        const statusResponse = await gatewayClient.getTransactionStatus(txHash);
+        
+        // Check if transaction is committed
+        if (statusResponse.status === 'CommittedSuccess' || statusResponse.status === 'CommittedFailure') {
+          console.log(`   NFT transaction status: ${statusResponse.status}`);
+          
+          if (statusResponse.status === 'CommittedSuccess') {
+            // Get full transaction details for the committed transaction
+            const detailsResponse = await gatewayClient.getTransactionDetails(txHash);
+            
+            // Look for NFT resource in new_global_entities
+            const newEntities = detailsResponse.transaction?.receipt?.state_updates?.new_global_entities;
+            if (newEntities && newEntities.length > 0) {
+              for (const entity of newEntities) {
+                if (entity.entity_type === 'GlobalNonFungibleResource') {
+                  console.log(`✅ NFT resource address extracted: ${entity.entity_address}`);
+                  return entity.entity_address;
+                }
+              }
+            }
+            
+            console.log('   No NFT resource found in committed transaction');
+            return null;
+          } else {
+            // Transaction failed
+            console.log(`   NFT transaction failed: ${statusResponse.error_message || 'Unknown error'}`);
+            return null;
+          }
+        } else {
+          // Transaction still pending or unknown status
+          console.log(`   NFT transaction status: ${statusResponse.status || statusResponse.intent_status || 'Pending'}`);
+          
+          // Wait before next poll
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
         }
+      } catch (error) {
+        console.log(`   Error on NFT attempt ${attempts}:`, error instanceof Error ? error.message : 'Unknown error');
+        
+        // Wait before retrying on error
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     }
     
+    console.log(`⏰ NFT resource extraction failed after ${maxAttempts} attempts`);
     return null;
   } catch (error) {
     console.error('Error extracting NFT resource address:', error);

@@ -43,7 +43,13 @@ export function createMintNonFungibleResourceTool(
         const finalNftId = nftId || `${Date.now()}`;
         const finalMetadata = metadata || { name: `NFT ${finalNftId}` };
 
-        console.log(`🎯 Minting NFT ${finalNftId} to ${resourceAddress} for ${toAccount}`);
+        // Validate NFT ID is numeric (since our collections use Integer type)
+        const nftIdNumber = parseInt(finalNftId);
+        if (isNaN(nftIdNumber) || nftIdNumber < 0) {
+          throw new Error(`Invalid NFT ID "${finalNftId}". Must be a positive integer (our NFT collections use Integer type IDs).`);
+        }
+
+        console.log(`🎯 Minting NFT ${nftIdNumber} to ${resourceAddress} for ${toAccount}`);
 
         // Validate addresses
         if (!resourceAddress.startsWith('resource_')) {
@@ -61,7 +67,7 @@ export function createMintNonFungibleResourceTool(
         const txHash = await tokenService.mintNonFungible(
           resourceAddress,
           toAccount,
-          { nftId: finalNftId, metadata: finalMetadata },
+          { nftId: nftIdNumber.toString(), metadata: finalMetadata },
           wallet,
           currentEpoch
         );

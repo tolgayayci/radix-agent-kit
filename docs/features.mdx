@@ -3,7 +3,7 @@ title: "Features"
 description: "Complete overview of Radix Agent Kit capabilities"
 ---
 
-Radix Agent Kit provides AI agents with comprehensive Radix blockchain functionality through 16 specialized tools and direct API access.
+Radix Agent Kit provides AI agents with comprehensive Radix blockchain functionality through 20 specialized tools and direct API access.
 
 ## 🤖 AI Agent Core
 
@@ -31,13 +31,13 @@ const agent = new RadixAgent({
 });
 ```
 
-### 16 Blockchain Tools
+### 20 Blockchain Tools
 Pre-built tools organized by operation type:
 - **Account & Wallet**: 3 tools
 - **Token Operations**: 5 tools  
 - **Component Interaction**: 2 tools
 - **Validator Operations**: 3 tools
-- **DeFi Operations**: 2 tools
+- **DeFi Operations**: 6 tools (Ociswap Pool V2 support)
 - **Utility**: 1 tool
 
 ## 💰 Account & Wallet Management
@@ -217,32 +217,87 @@ await defi.claimXRD({
 
 ## 🏊‍♂️ DeFi Operations
 
-### Liquidity Management
-Add/remove liquidity from two-resource pools.
+### Pool Creation (Ociswap Pool V2)
+Create advanced liquidity pools with multiple features.
 
 ```typescript
-await agent.run("Add 1000 XRD and 500 MyToken to pool component_tdx_...");
+// Standard pool
+await agent.run("Create pool with 1000 XRD and 2000 TOKEN with 0.3% fee");
+
+// Imbalanced pool (80/20)
+await agent.run("Create 80/20 weighted pool with 8000 XRD and 2000 TOKEN");
+
+// Hooked pool with custom logic
+await agent.run("Create hooked pool with hook component_tdx_... using 1000 XRD and 2000 TOKEN");
 
 // Direct API
+await defi.createTwoResourcePool({
+  ownerAddress: wallet.getAddress(),
+  resourceAddress1: "resource_tdx_...",
+  resourceAddress2: "resource_tdx_...",
+  amount1: "10000",
+  amount2: "20000",
+  feeTier: 30, // 0.3% fee
+  assetRatio: [80, 20], // Optional: imbalanced pool
+  hookAddress: "component_tdx_..." // Optional: hooked pool
+}, wallet, currentEpoch);
+```
+
+### Liquidity Management
+Add/remove liquidity with slippage protection.
+
+```typescript
+// Add liquidity
+await agent.run("Add 1000 XRD and 2000 TOKEN to pool component_tdx_...");
+
+// Remove liquidity
+await agent.run("Remove 100 LP tokens from pool component_tdx_...");
+
+// Direct API with slippage protection
 await defi.addLiquidity({
   ownerAddress: wallet.getAddress(),
   poolAddress: "component_tdx_...",
-  amounts: ["1000", "500"]
+  amounts: ["1000", "2000"],
+  minAmounts: ["990", "1980"] // 1% slippage tolerance
+}, wallet, currentEpoch);
+
+await defi.removeLiquidity({
+  ownerAddress: wallet.getAddress(),
+  poolAddress: "component_tdx_...",
+  amountLP: "100",
+  minAmounts: ["980", "1960"]
 }, wallet, currentEpoch);
 ```
 
 ### Token Swapping
-Execute token swaps through DEX pools.
+Execute swaps with minimum output protection.
 
 ```typescript
-await agent.run("Swap 100 XRD for MyToken in pool component_tdx_...");
+await agent.run("Swap 100 XRD for TOKEN in pool component_tdx_... expecting min 195 TOKEN");
 
 await defi.swapTokens({
   ownerAddress: wallet.getAddress(),
   poolAddress: "component_tdx_...",
-  inputResourceAddress: "resource_tdx_...",
-  outputResourceAddress: "resource_tdx_...",
-  amount: "100"
+  fromResourceAddress: "resource_tdx_...",
+  toResourceAddress: "resource_tdx_...",
+  amountIn: "100",
+  minAmountOut: "195" // Slippage protection
+}, wallet, currentEpoch);
+```
+
+### Flash Loans
+Borrow and repay tokens in a single transaction.
+
+```typescript
+await agent.run("Flash loan 10000 XRD from pool component_tdx_... using callback component_tdx_...");
+
+await defi.executeFlashLoan({
+  ownerAddress: wallet.getAddress(),
+  poolAddress: "component_tdx_...",
+  resourceAddress: "resource_tdx_...",
+  amount: "10000",
+  callbackComponentAddress: "component_tdx_...",
+  callbackData: "0x1234..."
 }, wallet, currentEpoch);
 ```
 
@@ -488,7 +543,7 @@ const agent = new RadixAgent({
 |----------|----------|-------|------------|
 | **Account Management** | Address generation, balance checking, account info | 3 tools | RadixAccount, RadixWallet |
 | **Token Operations** | Create, mint, transfer tokens and NFTs | 5 tools | Token class |
-| **DeFi** | Staking, liquidity, swapping | 5 tools | DeFi class |
+| **DeFi** | Pool creation, liquidity, swapping, flash loans | 9 tools | DeFi class |
 | **Smart Contracts** | Method calls, state inspection | 2 tools | Component class |
 | **Security** | Validation, encryption, rate limiting | Built-in | TransactionSecurity, SecureKeyStorage |
 | **Network** | Multi-network, gateway integration | Built-in | RadixGatewayClient |

@@ -1,9 +1,9 @@
 ---
 title: "AI Tools"
-description: "16 LangChain tools organized by blockchain operation type"
+description: "20 LangChain tools organized by blockchain operation type"
 ---
 
-Your AI agent has **16 specialized tools** for Radix blockchain operations, organized into 5 categories.
+Your AI agent has **20 specialized tools** for Radix blockchain operations, organized into 6 categories.
 
 ## Account & Wallet Operations
 
@@ -158,24 +158,97 @@ await agent.run("Claim rewards from validator_tdx_...");
 
 ## DeFi Operations
 
-### add_liquidity
-Add liquidity to two-resource pools.
+### create_two_resource_pool
+Create a new two-resource liquidity pool using Ociswap Pool V2.
 
-**Input**: `'poolAddress,amount1,amount2'` or JSON
+**Schema**: `{ input: string }`
+**Input**: `'resource1,resource2,amount1,amount2[,feeTier,assetRatio1,assetRatio2,hookAddress]'` or JSON
 
 ```typescript
-await agent.run("Add 1000 XRD and 500 MyToken to pool component_tdx_...");
+// Standard pool with 0.3% fee
+await agent.run("Create pool with 1000 XRD and 2000 TOKEN with 0.3% fee");
+
+// Imbalanced pool (80/20)
+await agent.run("Create 80/20 weighted pool with 8000 XRD and 2000 TOKEN");
+
+// Hooked pool with custom logic
+await agent.run("Create hooked pool with hook component_tdx_... using 1000 XRD and 2000 TOKEN");
+```
+
+---
+
+### create_hooked_pool
+Create an advanced pool with custom hook logic.
+
+**Schema**: `{ input: string }`
+**Input**: `'resource1,resource2,amount1,amount2,hookAddress[,feeTier]'` or JSON
+
+```typescript
+await agent.run("Create hooked pool with hook component_tdx_... using 5000 XRD and 10000 TOKEN");
+```
+
+---
+
+### add_liquidity
+Add liquidity to existing Ociswap pools.
+
+**Schema**: `{ input: string }`
+**Input**: `'poolAddress,amount1,amount2[,minAmount1,minAmount2]'` or JSON
+
+```typescript
+// Add liquidity with automatic ratio calculation
+await agent.run("Add 1000 XRD and 2000 TOKEN to pool component_tdx_...");
+
+// Add liquidity with slippage protection
+await agent.run("Add liquidity to pool component_tdx_... with 1000 XRD and 2000 TOKEN, min 990 XRD and 1980 TOKEN");
+```
+
+---
+
+### remove_liquidity
+Remove liquidity from pools by burning LP tokens.
+
+**Schema**: `{ input: string }`
+**Input**: `'poolAddress,lpAmount[,minAmount1,minAmount2]'` or JSON
+
+```typescript
+// Remove liquidity
+await agent.run("Remove 100 LP tokens from pool component_tdx_...");
+
+// Remove with minimum output protection
+await agent.run("Remove 50 LP tokens from pool component_tdx_... expecting min 490 XRD and 980 TOKEN");
 ```
 
 ---
 
 ### swap_tokens
-Execute token swaps in liquidity pools.
+Execute token swaps through Ociswap pools.
 
-**Input**: `'poolAddress,fromResource,toResource,amount'` or JSON
+**Schema**: `{ input: string }`
+**Input**: `'poolAddress,fromResource,toResource,amountIn[,minAmountOut]'` or JSON
 
 ```typescript
-await agent.run("Swap 100 XRD for MyToken in pool component_tdx_...");
+// Basic swap
+await agent.run("Swap 100 XRD for TOKEN in pool component_tdx_...");
+
+// Swap with slippage protection
+await agent.run("Swap 100 XRD for TOKEN in pool component_tdx_... expecting min 195 TOKEN");
+```
+
+---
+
+### flash_loan
+Execute flash loan operations (borrow and repay in single transaction).
+
+**Schema**: `{ input: string }`
+**Input**: `'poolAddress,resourceAddress,amount,callbackComponent[,callbackData]'` or JSON
+
+```typescript
+// Execute flash loan
+await agent.run("Flash loan 10000 XRD from pool component_tdx_... using callback component_tdx_...");
+
+// Flash loan with callback data
+await agent.run("Flash loan 5000 TOKEN from pool component_tdx_... with callback component_tdx_... and data 0x1234");
 ```
 
 ## Utility Tools
@@ -197,7 +270,7 @@ await agent.run("What's the current epoch?");
 | **Token Operations** | 5 | create_fungible_resource, create_non_fungible_resource, mint_fungible_resource, mint_non_fungible_resource, transfer_tokens |
 | **Component Interaction** | 2 | call_component_method, get_component_state |
 | **Validator Operations** | 3 | stake_xrd, unstake_xrd, claim_xrd |
-| **DeFi Operations** | 2 | add_liquidity, swap_tokens |
+| **DeFi Operations** | 6 | create_two_resource_pool, create_hooked_pool, add_liquidity, remove_liquidity, swap_tokens, flash_loan |
 | **Utility** | 1 | get_epoch |
 
 ## Direct Usage

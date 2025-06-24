@@ -58,10 +58,13 @@ export {
   StakeXRDOptions,
   UnstakeXRDOptions,
   ClaimXRDOptions,
-  TwoResourcePoolOptions,
+  CreatePoolOptions,
   AddLiquidityOptions,
   RemoveLiquidityOptions,
   SwapTokensOptions,
+  PoolInfo,
+  FlashLoanOptions,
+  HookExecutionOptions,
 } from "./radix/DeFi";
 
 // Export Component class and interfaces

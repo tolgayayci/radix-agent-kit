@@ -10,7 +10,6 @@
     "demo:components": "node demos/component-interaction.js",
     "demo:wallets": "node demos/wallet-operations.js",
     "demo:tokens": "node demos/token-operations.js",
-    "demo:defi": "node demos/defi-operations.js",
     "demo:staking": "node demos/staking-operations.js"
   },
   "dependencies": {

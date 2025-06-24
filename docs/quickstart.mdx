@@ -179,6 +179,25 @@ await agent.run("Show my staking positions");
 await agent.run("Claim rewards from validator_tdx_2_1sd5368...");
 ```
 
+### 🏊 DeFi Operations (Mainnet Only)
+```typescript
+// Create a liquidity pool
+await agent.run("Create pool with 1000 XRD and 2000 TOKEN with 0.3% fee");
+
+// Add liquidity to existing pool
+await agent.run("Add 500 XRD and 1000 TOKEN to pool component_rdx_...");
+
+// Swap tokens
+await agent.run("Swap 100 XRD for TOKEN in pool component_rdx_...");
+
+// Remove liquidity
+await agent.run("Remove 50 LP tokens from pool component_rdx_...");
+```
+
+<Note>
+**DeFi on Stokenet**: Ociswap pools are only available on Mainnet. For Stokenet testing, deploy your own pool blueprint like SimplePool.
+</Note>
+
 ## 7. Configuration Options
 
 Customize your agent with these options:
@@ -281,7 +300,7 @@ async function safeOperation() {
 ## 10. Next Steps
 
 <CardGroup cols={2}>
-  <Card title="All 16 Tools" icon="robot" href="/tools">
+  <Card title="All 20 Tools" icon="robot" href="/tools">
     Learn about every AI tool available
   </Card>
   <Card title="Complete Features" icon="star" href="/features">

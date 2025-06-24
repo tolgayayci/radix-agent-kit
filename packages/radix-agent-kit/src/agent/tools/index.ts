@@ -18,12 +18,16 @@ import { createMintNonFungibleResourceTool } from "./MintNonFungibleResourceTool
 import { createStakeXRDTool } from "./StakeXRDTool";
 import { createUnstakeXRDTool } from "./UnstakeXRDTool";
 import { createClaimXRDTool } from "./ClaimXRDTool";
-import { AddLiquidityTool } from "./AddLiquidityTool";
-import { SwapTokensTool } from "./SwapTokensTool";
+import { createCreateTwoResourcePoolTool } from "./CreateTwoResourcePoolTool";
+import { createAddLiquidityTool } from "./AddLiquidityTool";
+import { createRemoveLiquidityTool } from "./RemoveLiquidityTool";
+import { createSwapTokensTool } from "./SwapTokensTool";
 import { createCallComponentMethodTool } from "./CallComponentMethodTool";
 import { createGetEpochTool } from "./GetEpochTool";
 import { createFundStokenetWalletTool } from "./FundStokenetWalletTool";
 import { createGetComponentStateTool } from "./GetComponentStateTool";
+import { createFlashLoanTool } from "./FlashLoanTool";
+import { createHookedPoolTool } from "./CreateHookedPoolTool";
 
 // Export base tool class (keeping for backward compatibility)
 export { RadixTool } from "./RadixTool";
@@ -46,12 +50,13 @@ export { createStakeXRDTool } from "./StakeXRDTool";
 export { createUnstakeXRDTool } from "./UnstakeXRDTool";
 export { createClaimXRDTool } from "./ClaimXRDTool";
 
-// Export tool classes (keeping for backward compatibility)
-export { StakeXRDTool } from "./StakeXRDTool";
-export { UnstakeXRDTool } from "./UnstakeXRDTool";
-export { ClaimXRDTool } from "./ClaimXRDTool";
-export { AddLiquidityTool } from "./AddLiquidityTool";
-export { SwapTokensTool } from "./SwapTokensTool";
+// Export DeFi tool factory functions
+export { createCreateTwoResourcePoolTool } from "./CreateTwoResourcePoolTool";
+export { createAddLiquidityTool } from "./AddLiquidityTool";
+export { createRemoveLiquidityTool } from "./RemoveLiquidityTool";
+export { createSwapTokensTool } from "./SwapTokensTool";
+export { createFlashLoanTool } from "./FlashLoanTool";
+export { createHookedPoolTool } from "./CreateHookedPoolTool";
 
 /**
  * Factory function to create all default Radix tools with enhanced error handling
@@ -103,8 +108,12 @@ export function createDefaultRadixTools(
       createStakeXRDTool(gatewayClient, transactionBuilder, wallet, networkId),
       createUnstakeXRDTool(gatewayClient, transactionBuilder, wallet, networkId),
       createClaimXRDTool(gatewayClient, transactionBuilder, wallet, networkId),
-      new AddLiquidityTool(gatewayClient, transactionBuilder, wallet, networkId) as any,
-      new SwapTokensTool(gatewayClient, transactionBuilder, wallet, networkId) as any,
+      createCreateTwoResourcePoolTool(gatewayClient, transactionBuilder, wallet, networkId),
+      createAddLiquidityTool(gatewayClient, transactionBuilder, wallet, networkId),
+      createRemoveLiquidityTool(gatewayClient, transactionBuilder, wallet, networkId),
+      createSwapTokensTool(gatewayClient, transactionBuilder, wallet, networkId),
+      createFlashLoanTool(gatewayClient, transactionBuilder, wallet, networkId),
+      createHookedPoolTool(gatewayClient, transactionBuilder, wallet, networkId),
     ];
 
     // Temporarily disable error handling wrapper to test tools directly
@@ -139,8 +148,12 @@ export const RADIX_TOOL_NAMES = {
   STAKE_XRD: "stake_xrd",
   UNSTAKE_XRD: "unstake_xrd",
   CLAIM_XRD: "claim_xrd",
+  CREATE_TWO_RESOURCE_POOL: "create_two_resource_pool",
   ADD_LIQUIDITY: "add_liquidity",
+  REMOVE_LIQUIDITY: "remove_liquidity",
   SWAP_TOKENS: "swap_tokens",
+  FLASH_LOAN: "flash_loan",
+  CREATE_HOOKED_POOL: "create_hooked_pool",
   CALL_COMPONENT_METHOD: "call_component_method",
 } as const;
 

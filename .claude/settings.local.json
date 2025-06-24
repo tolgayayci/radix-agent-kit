@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "WebFetch(domain:docs.ociswap.com)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:x.com)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(source \"$HOME/.cargo/env\")",
+      "Bash(cargo install:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": []
+  }
+}

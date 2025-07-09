@@ -18,7 +18,7 @@
     "axios": "^1.9.0",
     "dotenv": "^16.3.1",
     "bip39": "^3.1.0",
-    "radix-agent-kit": "file:../../packages/radix-agent-kit"
+    "radix-agent-kit": "^0.2.0"
   },
   "keywords": [
     "radix",

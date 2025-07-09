@@ -15,7 +15,7 @@ export function createGetAccountInfoTool(
 ): DynamicStructuredTool {
   return new DynamicStructuredTool({
     name: "get_account_info",
-    description: "Use this tool when users ask for 'account information', 'account details', 'account info', or want to know about their account. Retrieves comprehensive account data including address, public key, metadata, and basic XRD balance. Call this for queries like 'show my account info', 'what is my account information', 'account details', etc.",
+    description: "Use this tool when users ask for 'account information', 'account details', 'account info', or want to know about their account. Retrieves account data including address, public key, and metadata. For balance queries, use the get_balances tool instead. Call this for queries like 'show my account info', 'what is my account information', 'account details', etc.",
     schema: z.object({
       account_address: z.string().optional().describe("Account address to get information for (optional, defaults to agent's account)")
     }),
@@ -29,20 +29,17 @@ export function createGetAccountInfoTool(
           return `❌ Invalid account address format: ${accountAddress}`;
         }
 
-        // Get account information
-        const accountInfo = await gatewayClient.getEntityDetails(
-          accountAddress,
-          {
-            opt_ins: {
-              explicit_metadata: ["name", "description", "account_type"],
-              ancestor_identities: false,
-              component_royalty_config: false,
-              component_royalty_vault_balance: false,
-              package_royalty_vault_balance: false,
-              non_fungible_include_nfids: false,
-            },
+        // Get basic account info first
+        const accountInfo = await gatewayClient.getEntityDetails(accountAddress, {
+          opt_ins: {
+            explicit_metadata: ["name", "description", "account_type"],
+            ancestor_identities: false,
+            component_royalty_config: false,
+            component_royalty_vault_balance: false,
+            package_royalty_vault_balance: false,
+            non_fungible_include_nfids: false,
           }
-        );
+        });
 
         if (!accountInfo.items || accountInfo.items.length === 0) {
           return `❌ Account not found: ${accountAddress}`;
@@ -51,12 +48,10 @@ export function createGetAccountInfoTool(
         const account = accountInfo.items[0];
         const metadata = account.metadata?.items || [];
 
-        // Extract metadata with proper type handling
+        // Extract metadata
         const getMetadataValue = (key: string): string | undefined => {
           const item = metadata.find((item: any) => item.key === key);
           if (!item?.value?.typed) return undefined;
-
-          // Handle different metadata value types
           const typed = item.value.typed as any;
           if (typed.type === "String" && typed.value) {
             return typed.value;
@@ -68,12 +63,8 @@ export function createGetAccountInfoTool(
         const accountDescription = getMetadataValue("description");
         const accountType = getMetadataValue("account_type");
 
-        // Build response
-        const addressDisplay = accountAddress === wallet.getAddress()
-          ? "Your account"
-          : `Account ${accountAddress.slice(0, 16)}...`;
-
-        let response = `🏦 ${addressDisplay} Information:\n`;
+        // Build response WITHOUT balance first
+        let response = `🏦 Account Information:\n`;
         response += `• Address: ${accountAddress}\n`;
 
         if (accountName) {
@@ -92,26 +83,8 @@ export function createGetAccountInfoTool(
         if (account.details && typeof account.details === "object") {
           const details = account.details as any;
           if (details.state?.public_key) {
-            response += `• Public Key: ${details.state.public_key.slice(0, 16)}...\n`;
+            response += `• Public Key: ${details.state.public_key.slice(0, 16)}...`;
           }
-        }
-
-        // Get basic balance info
-        try {
-          const balancesResponse = await gatewayClient.getAccountBalances(accountAddress);
-          if (balancesResponse.items?.[0]?.fungible_resources?.items) {
-            const xrdResourceAddress = transactionBuilder.getXRDResourceAddress();
-            const xrdBalance = balancesResponse.items[0].fungible_resources.items.find(
-              (resource: any) => resource.resource_address === xrdResourceAddress
-            );
-            if (xrdBalance) {
-              const formatted = parseFloat(xrdBalance.amount).toLocaleString();
-              response += `• XRD Balance: ${formatted} XRD\n`;
-            }
-          }
-        } catch (error) {
-          // Balance fetch failed, but account info is still valid
-          console.warn("Could not fetch balance for account info:", error);
         }
 
         return response.trim();

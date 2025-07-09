@@ -12,7 +12,9 @@
       "Bash(grep:*)",
       "Bash(source \"$HOME/.cargo/env\")",
       "Bash(cargo install:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebFetch(domain:ociswap.com)",
+      "Bash(npm run demo:accounts:*)"
     ],
     "deny": []
   }

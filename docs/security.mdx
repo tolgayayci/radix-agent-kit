@@ -98,6 +98,9 @@ const agent = new RadixAgent({
 });
 
 // ✅ GOOD: Use environment variables
+import "dotenv/config"; // Required for Node.js environments
+import { RadixAgent } from "radix-agent-kit";
+
 const agent = new RadixAgent({
   mnemonic: process.env.RADIX_MNEMONIC,
   openaiApiKey: process.env.OPENAI_API_KEY,
@@ -123,6 +126,9 @@ RADIX_NETWORK=stokenet
 **Always use testnet for development**:
 
 ```javascript
+import "dotenv/config"; // Required for Node.js environments
+import { RadixAgent, RadixNetwork } from "radix-agent-kit";
+
 // Development environment
 const agent = new RadixAgent({
   networkId: RadixNetwork.Stokenet, // Testnet

@@ -30,6 +30,10 @@ OPENAI_API_KEY=your-openai-api-key
 RADIX_MNEMONIC=your-twenty-four-word-mnemonic-phrase
 ```
 
+<Info>
+**Node.js users**: You need to import `dotenv/config` at the top of your files to load environment variables. This is shown in all code examples below.
+</Info>
+
 <Warning>
 **Start with Stokenet!** Use the testnet for learning. Only switch to mainnet when you're ready for production.
 </Warning>
@@ -41,6 +45,7 @@ Choose your setup: new wallet or existing wallet.
 <CodeGroup>
 
 ```typescript New Wallet
+import "dotenv/config"; // Required for Node.js environments
 import { RadixAgent, RadixNetwork, RadixMnemonicWallet } from "radix-agent-kit";
 
 // Generate a new 24-word wallet
@@ -63,6 +68,7 @@ const agent = new RadixAgent({
 ```
 
 ```typescript Existing Wallet
+import "dotenv/config"; // Required for Node.js environments
 import { RadixAgent, RadixNetwork } from "radix-agent-kit";
 
 // Use existing mnemonic from .env

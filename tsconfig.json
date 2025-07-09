@@ -7,13 +7,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./packages/radix-agent-kit/src",
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true
   },
   "include": [
-    "src/**/*.ts"
+    "packages/radix-agent-kit/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

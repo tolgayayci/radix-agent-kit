@@ -322,6 +322,15 @@ export class DeFi {
           "2. Use existing test pools if available."
         );
       }
+      
+      // Note for mainnet users about the limitations
+      if (this.networkId === 1) {
+        console.log("⚠️  Pool creation implementation has limitations:");
+        console.log("   - Factory address is not verified");
+        console.log("   - Using speculative direct instantiation method");
+        console.log("   - Blueprint structure for V2 is not fully documented");
+        console.log("   - This may fail. For production use, please verify with Ociswap team");
+      }
       const {
         ownerAddress,
         resourceAddress1,
@@ -353,9 +362,19 @@ export class DeFi {
         "Ed25519"
       );
 
-      // Get the Ociswap package and component addresses
+      // Get the Ociswap package address
       const ociswapPackage = this.getOciswapPackageAddress();
-      const ociswapFactory = this.getOciswapFactoryAddress();
+      
+      // Try to get factory address, but use package instantiation as fallback
+      let ociswapFactory: string | null = null;
+      let useDirectInstantiation = false;
+      
+      try {
+        ociswapFactory = this.getOciswapFactoryAddress();
+      } catch (error) {
+        console.warn("Ociswap factory address not available, using direct package instantiation");
+        useDirectInstantiation = true;
+      }
 
       // Validate amounts
       const parsedAmount1 = this.parseAmount(amount1);
@@ -364,23 +383,30 @@ export class DeFi {
       // Build pool creation manifest based on features requested
       let manifest: string;
 
-      if (hookAddress) {
+      if (useDirectInstantiation || this.networkId === 1) {
+        // For mainnet, use direct package instantiation as a workaround
+        manifest = this.buildDirectInstantiationManifest(
+          ownerAddress, resourceAddress1, resourceAddress2, 
+          parsedAmount1, parsedAmount2, feeTier, ociswapPackage,
+          poolName || "Ociswap Pool", poolSymbol || "OCI-LP"
+        );
+      } else if (hookAddress) {
         // Create hooked pool with custom logic
         manifest = this.buildHookedPoolManifest(
           ownerAddress, resourceAddress1, resourceAddress2, 
-          parsedAmount1, parsedAmount2, feeTier, hookAddress, ociswapFactory
+          parsedAmount1, parsedAmount2, feeTier, hookAddress, ociswapFactory!
         );
       } else if (assetRatio && (assetRatio[0] !== 50 || assetRatio[1] !== 50)) {
         // Create imbalanced pool
         manifest = this.buildImbalancedPoolManifest(
           ownerAddress, resourceAddress1, resourceAddress2, 
-          parsedAmount1, parsedAmount2, feeTier, assetRatio, ociswapFactory
+          parsedAmount1, parsedAmount2, feeTier, assetRatio, ociswapFactory!
         );
       } else {
         // Create standard balanced pool
         manifest = this.buildStandardPoolManifest(
           ownerAddress, resourceAddress1, resourceAddress2, 
-          parsedAmount1, parsedAmount2, feeTier, ociswapFactory
+          parsedAmount1, parsedAmount2, feeTier, ociswapFactory!
         );
       }
 
@@ -448,6 +474,25 @@ export class DeFi {
       };
     } catch (error) {
       console.error("Error creating Ociswap Pool V2:", error);
+      
+      // Provide more detailed error information
+      if (error instanceof Error) {
+        if (error.message.includes("InvalidGlobalAddress")) {
+          throw new Error(
+            `Failed to create Ociswap Pool V2: Invalid component address detected. ` +
+            `This is likely due to an outdated Ociswap factory address. ` +
+            `Please contact the Ociswap team for the correct mainnet addresses. ` +
+            `Original error: ${error.message}`
+          );
+        } else if (error.message.includes("insufficient balance")) {
+          throw new Error(
+            `Failed to create Ociswap Pool V2: Insufficient token balance. ` +
+            `Please ensure you have enough of both tokens to create the pool. ` +
+            `Original error: ${error.message}`
+          );
+        }
+      }
+      
       throw new Error(`Failed to create Ociswap Pool V2: ${error}`);
     }
   }
@@ -525,6 +570,39 @@ export class DeFi {
       console.error("Error executing flash loan:", error);
       throw new Error(`Failed to execute flash loan: ${error}`);
     }
+  }
+
+  /**
+   * Build manifest for direct instantiation from package (mainnet workaround)
+   * NOTE: This is based on limited information and may not be correct for V2
+   */
+  private buildDirectInstantiationManifest(
+    ownerAddress: string,
+    resourceAddress1: string,
+    resourceAddress2: string,
+    amount1: string,
+    amount2: string,
+    feeTier: number,
+    packageAddress: string,
+    poolName: string,
+    poolSymbol: string
+  ): string {
+    // WARNING: This implementation is speculative
+    // Ociswap V2 documentation indicates it uses Radix's native Resource Pools
+    // but the exact blueprint name and instantiation method are not confirmed
+    
+    // Based on limited information:
+    // - Package address from ociswap/radix-event-stream repository
+    // - InstantiateEvent structure shows pool_address and liquidity_pool_address
+    // - V2 uses TwoResourcePool (TRP) as building block
+    // - Blueprint name might be "BasicPool" but this is not confirmed
+    
+    throw new Error(
+      "Direct pool instantiation is not currently supported. " +
+      "The exact Ociswap V2 blueprint structure and instantiation method are not documented. " +
+      "Please use existing pools or contact Ociswap team for assistance. " +
+      "Package address: " + packageAddress
+    );
   }
 
   /**
@@ -1366,7 +1444,8 @@ export class DeFi {
   private getOciswapPackageAddress(): string {
     switch (this.networkId) {
       case 1: // NetworkId.Mainnet
-        return "package_rdx1pkrgvskdkglfd2ar4jkpw5r2tsptk85gap4hzr9h3qxw6ca40ts8dt";
+        // Package address found in ociswap/radix-event-stream repository
+        return "package_rdx1p5l6dp3slnh9ycd7gk700czwlck9tujn0zpdnd0efw09n2zdnn0lzx";
       case 2: // NetworkId.Stokenet  
         // Ociswap is not deployed on Stokenet yet
         throw new Error("Ociswap is not currently deployed on Stokenet. Pool creation is only available on Mainnet.");
@@ -1381,7 +1460,14 @@ export class DeFi {
    private getOciswapFactoryAddress(): string {
      switch (this.networkId) {
        case 1: // NetworkId.Mainnet
-         return "component_rdx1cqvgx33089ukm2pl97pv4max0x40ruvfy4lt60yvya744cve475w0q";
+         // NOTE: This address needs to be verified with Ociswap team
+         // The current address appears to be invalid or outdated
+         // Temporary workaround: Use package instantiation instead of factory
+         throw new Error(
+           "Ociswap V2 factory address needs to be updated. " +
+           "The current address is invalid. Please contact Ociswap team for the correct mainnet factory address. " +
+           "Current invalid address: component_rdx1cqvgx33089ukm2pl97pv4max0x40ruvfy4lt60yvya744cve475w0q"
+         );
        case 2: // NetworkId.Stokenet  
          // Using the Ociswap V1 factory address for Stokenet as V2 factory is not deployed yet
          // When V2 is deployed on Stokenet, this should be updated
